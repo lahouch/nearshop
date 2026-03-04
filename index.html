@@ -387,6 +387,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
         <!-- MINI MAP PICKER -->
         <div id="adminPickerMap"></div>
+        <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-bottom:10px;margin-top:-6px">
+          👆 Clique sur la carte pour sélectionner un commerce automatiquement
+        </div>
 
         <!-- INFOS RÉCUPÉRÉES AUTOMATIQUEMENT -->
         <div class="fetched-info" id="fetchedInfo">
@@ -661,31 +664,154 @@ function initAdminMap() {
     maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
   }).addTo(adminPickerMap);
 
-  // Clic sur la mini-map pour placer manuellement
+  // Clic sur la mini-map → cherche le commerce le plus proche via Google Places
   adminPickerMap.on('click', function(e) {
     placeAdminMarker(e.latlng.lat, e.latlng.lng);
-    reverseGeocode(e.latlng.lat, e.latlng.lng);
+    showToast('🔍 Recherche du commerce en cours...');
+    fetchPlaceFromCoords(e.latlng.lat, e.latlng.lng);
   });
 }
 
 function placeAdminMarker(lat, lng) {
   if (adminPickerMarker) adminPickerMap.removeLayer(adminPickerMarker);
   adminPickerMarker = L.marker([lat, lng], { icon: L.divIcon({
-    html: `<div style="width:22px;height:22px;background:#f0c040;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(240,192,64,.9)"></div>`,
-    className:'', iconSize:[22,22], iconAnchor:[11,11]
+    html: `<div style="width:26px;height:26px;background:#f0c040;border-radius:50%;border:3px solid #fff;box-shadow:0 0 14px rgba(240,192,64,.9);animation:pulse 1.5s infinite"></div>`,
+    className:'', iconSize:[26,26], iconAnchor:[13,13]
   })}).addTo(adminPickerMap);
   document.getElementById('f-lat').value = lat.toFixed(6);
   document.getElementById('f-lng').value = lng.toFixed(6);
-  document.getElementById('fi-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
-async function reverseGeocode(lat, lng) {
+function fetchPlaceFromCoords(lat, lng) {
+  if (!window.google || !window.google.maps) { showToast('⚠️ Google Maps non chargé'); return; }
+
+  // Utilise PlacesService pour trouver le commerce le plus proche du clic
+  const googleLatLng = new google.maps.LatLng(lat, lng);
+
+  // On a besoin d'un div DOM pour PlacesService
+  const svc = new google.maps.places.PlacesService(document.createElement('div'));
+
+  // 1. Recherche du commerce le plus proche (rayon 30m)
+  svc.nearbySearch({
+    location: googleLatLng,
+    radius: 50,
+    type: ['establishment']
+  }, (results, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+      // Prend le résultat le plus proche
+      const closest = results[0];
+      // Récupère tous les détails du lieu
+      svc.getDetails({
+        placeId: closest.place_id,
+        fields: [
+          'place_id','name','formatted_address','geometry',
+          'formatted_phone_number','international_phone_number',
+          'opening_hours','current_opening_hours',
+          'business_status','website','rating','user_ratings_total',
+          'price_level','types','vicinity'
+        ]
+      }, (place, detailStatus) => {
+        if (detailStatus === google.maps.places.PlacesServiceStatus.OK) {
+          fillFormFromPlace(place);
+          // Recentrer le marqueur sur la position exacte du commerce
+          const pLat = place.geometry.location.lat();
+          const pLng = place.geometry.location.lng();
+          placeAdminMarker(pLat, pLng);
+          adminPickerMap.setView([pLat, pLng], 18);
+          showToast('✅ Commerce trouvé et formulaire rempli !');
+        } else {
+          // Détails non disponibles → fallback adresse simple
+          reverseGeocodeSimple(lat, lng);
+        }
+      });
+    } else {
+      // Aucun commerce trouvé → fallback adresse simple
+      reverseGeocodeSimple(lat, lng);
+      showToast('📍 Aucun commerce trouvé ici — adresse récupérée');
+    }
+  });
+}
+
+// Remplir le formulaire depuis un objet place Google
+function fillFormFromPlace(place) {
+  const lat = place.geometry.location.lat();
+  const lng = place.geometry.location.lng();
+  const types = place.types || [];
+
+  // Champs formulaire
+  if (place.name)                    document.getElementById('f-name').value    = place.name;
+  if (place.formatted_address)       document.getElementById('f-address').value = place.formatted_address;
+  else if (place.vicinity)           document.getElementById('f-address').value = place.vicinity;
+  if (place.formatted_phone_number)  document.getElementById('f-phone').value   = place.formatted_phone_number;
+  else if (place.international_phone_number) document.getElementById('f-phone').value = place.international_phone_number;
+
+  // Horaires
+  const oh = place.opening_hours || place.current_opening_hours;
+  if (oh?.weekday_text?.length) {
+    document.getElementById('f-hours').value = oh.weekday_text.join(' | ');
+  }
+
+  // Statut
+  if (oh) { try { document.getElementById('f-status').value = oh.isOpen() ? 'open' : 'closed'; } catch(e) {} }
+  if (place.business_status === 'CLOSED_PERMANENTLY' || place.business_status === 'CLOSED_TEMPORARILY') {
+    document.getElementById('f-status').value = 'closed';
+  }
+
+  // Catégorie auto
+  document.getElementById('f-cat').value = guessCategory(types);
+
+  // Coords
+  document.getElementById('f-lat').value = lat.toFixed(6);
+  document.getElementById('f-lng').value = lng.toFixed(6);
+
+  // ── Récap visuel ──
+  document.querySelectorAll('[id^="fi-row-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('fi-hours-detail').style.display = 'none';
+
+  fi('fi-name',    place.name,             'fi-row-name');
+  fi('fi-address', place.formatted_address || place.vicinity, 'fi-row-address');
+  fi('fi-phone',   place.formatted_phone_number || place.international_phone_number || '', 'fi-row-phone');
+  fi('fi-coords',  `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'fi-row-coords');
+  fi('fi-cat',     guessCategory(types),   'fi-row-cat');
+
+  if (place.website) {
+    document.getElementById('fi-website').innerHTML = `<a href="${place.website}" target="_blank" style="color:var(--accent)">${place.website.replace(/^https?:\/\//,'').split('/')[0]}</a>`;
+    document.getElementById('fi-row-website').style.display = 'flex';
+  }
+  if (place.rating) {
+    fi('fi-rating', `${'★'.repeat(Math.round(place.rating))} ${place.rating}/5 (${place.user_ratings_total||0} avis)`, 'fi-row-rating');
+  }
+
+  const statusText = place.business_status === 'OPERATIONAL' ? '🟢 Opérationnel'
+    : place.business_status === 'CLOSED_TEMPORARILY' ? '🟡 Fermé temporairement'
+    : place.business_status === 'CLOSED_PERMANENTLY' ? '🔴 Fermé définitivement'
+    : (oh ? (oh.isOpen?.() ? '🟢 Ouvert maintenant' : '🔴 Fermé maintenant') : '');
+  fi('fi-status', statusText, 'fi-row-status');
+
+  if (oh?.weekday_text?.length) {
+    fi('fi-hours', oh.weekday_text[new Date().getDay()===0?6:new Date().getDay()-1], 'fi-row-hours');
+    const detail = document.getElementById('fi-hours-detail');
+    detail.innerHTML = '<strong style="color:var(--text);display:block;margin-bottom:4px">📅 Horaires complets</strong>' +
+      oh.weekday_text.map((h,i) => {
+        const isToday = (new Date().getDay()===0?6:new Date().getDay()-1) === i;
+        return `<div style="${isToday?'color:var(--accent);font-weight:700':''}">${h}</div>`;
+      }).join('');
+    detail.style.display = 'block';
+  }
+
+  document.getElementById('fetchedInfo').style.display = 'block';
+}
+
+// Fallback : juste l'adresse via Nominatim si aucun commerce trouvé
+async function reverseGeocodeSimple(lat, lng) {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+    const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
     const data = await res.json();
     if (data.display_name) {
-      document.getElementById('f-address').value = data.display_name.split(',').slice(0,4).join(',').trim();
-      document.getElementById('fi-address').textContent = document.getElementById('f-address').value;
+      const addr = data.display_name.split(',').slice(0,4).join(',').trim();
+      document.getElementById('f-address').value = addr;
+      fi('fi-address', addr, 'fi-row-address');
+      fi('fi-coords', `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'fi-row-coords');
       document.getElementById('fetchedInfo').style.display = 'block';
     }
   } catch(e) {}
