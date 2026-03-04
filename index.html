@@ -93,6 +93,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .mobile-panel{display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--surface);border-radius:20px 20px 0 0;z-index:1500;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:75vh;overflow:hidden;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);pointer-events:none;}
 .mobile-panel.open{transform:translateY(0);pointer-events:all;}
 .mobile-panel-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 6px;flex-shrink:0;cursor:pointer;}
+.mobile-panel-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.panel-close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surface2);color:var(--muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.panel-close-btn:hover,.panel-close-btn:active{background:var(--accent2);color:#fff;}
 .mobile-panel-content{overflow-y:auto;flex:1;padding:0 12px 12px;}
 .mobile-panel-content::-webkit-scrollbar{display:none;}
 
@@ -428,18 +431,24 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
 <!-- ══ MOBILE PANEL (liste magasins) ══ -->
 <div class="mobile-panel" id="mobilePanel">
-  <div class="mobile-panel-handle" onclick="closeMobilePanel()"></div>
-  <div class="sidebar-header" style="padding:0 14px 12px;flex-shrink:0;">
-    <div class="sidebar-title">
-      <span>Magasins proches</span>
+  <!-- Barre supérieure : titre + bouton fermer -->
+  <div class="mobile-panel-topbar">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:1rem">📋</span>
+      <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem">Magasins proches</span>
       <span class="count-badge" id="countBadgeMobile">0</span>
     </div>
+    <button class="panel-close-btn" id="panelCloseBtn" onclick="closeMobilePanel()">✕</button>
+  </div>
+  <!-- Recherche + filtres -->
+  <div style="padding:0 14px 12px;flex-shrink:0;">
     <div class="search-box">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="searchInputMobile" placeholder="Nom, adresse..." oninput="syncSearch(this)">
     </div>
     <div class="filter-row" id="filterRowMobile"></div>
   </div>
+  <!-- Liste -->
   <div class="mobile-panel-content">
     <div class="store-list" id="storeListMobile" style="padding:0;"></div>
   </div>
@@ -1589,12 +1598,8 @@ function mobileNav(tab) {
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
   } else if (tab === 'list') {
     document.getElementById('mnavList').classList.add('active');
-    // Si déjà ouvert → fermer, sinon ouvrir
-    if (mobilePanelOpen) {
-      closeMobilePanel();
-    } else {
-      openMobilePanel();
-    }
+    // Toujours ouvrir — la ✕ sert à fermer
+    if (!mobilePanelOpen) openMobilePanel();
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
   } else if (tab === 'admin') {
     requireAdmin();
@@ -1617,9 +1622,10 @@ function closeMobilePanel() {
   const panel = document.getElementById('mobilePanel');
   panel.classList.remove('open');
   mobilePanelOpen = false;
+  // Remettre Explore actif, Magasins redevient cliquable
   document.getElementById('mnavExplore').classList.add('active');
   document.getElementById('mnavList').classList.remove('active');
-  setTimeout(() => { _panelTransitioning = false; }, 400);
+  setTimeout(() => { _panelTransitioning = false; }, 380);
 }
 
 function syncSearch(el) {
