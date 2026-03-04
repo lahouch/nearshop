@@ -840,7 +840,7 @@ let fb = null;
 let currentUser = null;
 let isAdmin = false;
 // ⚠️ EMAIL ADMIN AUTORISÉ — changer avec votre email
-const ADMIN_EMAIL = 'lahouchki@gmail.com';
+const ADMIN_EMAIL = 'admin@nearshop.app';
 
 // ════════════════════════════════
 //  FIREBASE INIT
@@ -852,9 +852,6 @@ window.addEventListener('fbReady', () => {
     currentUser = user;
     // Admin = seulement l'email autorisé
     isAdmin = !!(user && user.email === ADMIN_EMAIL);
-
-    // Bouton logout : visible si connecté (admin OU utilisateur)
-    document.getElementById('logoutBtn').style.display = user ? 'flex' : 'none';
 
     // Mettre à jour l'UI header
     updateUserUI(user);
@@ -1214,6 +1211,9 @@ function starsHtml(r,size='.82rem'){if(!r)return'';const f=Math.round(r);return`
 
 function renderStores() {
   if (!map) { setTimeout(renderStores, 300); return; }
+  const storeListEl = document.getElementById('storeList');
+  const countEl = document.getElementById('storeCount');
+  if(!storeListEl) return;
   mapMarkers.forEach(m => map.removeLayer(m)); mapMarkers=[];
   if(mobilePanelOpen) renderStoresMobile();
 
@@ -1651,6 +1651,7 @@ async function loginUserGoogle(){
 function updateUserUI(user){
   const avatarBtn = document.getElementById('userAvatarBtn');
   const loginBtn  = document.getElementById('loginBtn');
+  if(!avatarBtn || !loginBtn) return;
 
   if(user){
     loginBtn.style.display = 'none';
@@ -1691,11 +1692,13 @@ function closeUserMenu(){
 
 // Fermer le menu si clic ailleurs
 document.addEventListener('click', e => {
-  const menu = document.getElementById('userMenu');
-  const btn  = document.getElementById('userAvatarBtn');
-  if(menu && !menu.contains(e.target) && !btn?.contains(e.target)){
-    closeUserMenu();
-  }
+  try {
+    const menu = document.getElementById('userMenu');
+    const btn  = document.getElementById('userAvatarBtn');
+    if(menu && !menu.contains(e.target) && btn && !btn.contains(e.target)){
+      closeUserMenu();
+    }
+  } catch(e) {}
 });
 
 async function doLogout(){
