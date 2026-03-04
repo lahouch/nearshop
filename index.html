@@ -324,7 +324,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   <div class="header-right">
     <button class="lang-btn" onclick="cycleLang()">🌍 <span id="langLabel">FR</span></button>
     <button class="icon-btn" onclick="toggleTheme()" title="Thème">🌗</button>
-    <button class="locate-btn" onclick="locateUser()">
+    <button class="locate-btn" onclick="locateUser(false)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       <span data-i18n="locate">Me localiser</span>
     </button>
@@ -1187,14 +1187,34 @@ function switchView(v){
 
 function setCatFilter(el,cat){catFilter=cat;renderStores();}
 
-function locateUser(){
-  if(!navigator.geolocation){showToast('Géolocalisation non supportée');return;}
-  navigator.geolocation.getCurrentPosition(pos=>{
-    userLat=pos.coords.latitude; userLng=pos.coords.longitude;
-    updateUserMarker(userLat,userLng);
-    map.setView([userLat,userLng],14);
-    renderStores(); showToast('📍 Position mise à jour !');
-  },()=>showToast('Impossible d\'accéder à votre position'));
+function locateUser(silent=false){
+  if(!navigator.geolocation){
+    if(!silent) showToast('Géolocalisation non supportée');
+    return;
+  }
+  // Show a subtle loading indicator on the button
+  const btn = document.querySelector('.locate-btn');
+  if(btn) { btn._origHTML = btn.innerHTML; btn.innerHTML = '⏳ Localisation...'; btn.disabled = true; }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      updateUserMarker(userLat, userLng);
+      map.setView([userLat, userLng], 14);
+      renderStores();
+      if(!silent) showToast('📍 Position mise à jour !');
+      else showToast('📍 Bienvenue ! Magasins autour de vous chargés.');
+      if(btn) { btn.innerHTML = btn._origHTML; btn.disabled = false; }
+    },
+    err => {
+      // Si refus ou erreur, on garde Bruxelles par défaut silencieusement
+      if(!silent) showToast('⚠️ Position non disponible — affichage par défaut.');
+      if(btn) { btn.innerHTML = btn._origHTML; btn.disabled = false; }
+      renderStores();
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+  );
 }
 
 function showToast(msg){
@@ -1217,7 +1237,11 @@ window.addEventListener('load',()=>{
   initMap();
   applyLang();
   initPlacePicker();
-  // If Firebase takes too long or isn't configured, show empty map anyway
+
+  // 📍 Localisation automatique dès l'ouverture
+  locateUser(true);
+
+  // Fallback Firebase
   setTimeout(() => {
     if(!fb) {
       console.warn('Firebase not ready — running in demo mode');
