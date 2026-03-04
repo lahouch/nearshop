@@ -55,14 +55,15 @@ const db   = getFirestore(app);
 const auth = getAuth(app);
 const gProvider = new GoogleAuthProvider();
 
-// ── expose to global ──
+// ── fb exposé plus bas ──
+
+// Stocker fb globalement — sera utilisé dès que le DOM est prêt
+window._fbReady = true;
 window._fb = { db, auth, gProvider,
   collection, addDoc, getDocs, doc, updateDoc, deleteDoc,
   onSnapshot, query, orderBy, serverTimestamp,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged, updateProfile };
-
-// Fire fbReady after a tick so load listeners are registered
-setTimeout(() => window.dispatchEvent(new Event('fbReady')), 0);
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, signOut, onAuthStateChanged, updateProfile };
 </script>
 
 <style>
@@ -845,31 +846,31 @@ const ADMIN_EMAIL = 'admin@nearshop.app';
 // ════════════════════════════════
 //  FIREBASE INIT
 // ════════════════════════════════
-window.addEventListener('fbReady', () => {
+function initFirebase() {
+  if (!window._fb) { setTimeout(initFirebase, 100); return; }
   fb = window._fb;
 
   fb.onAuthStateChanged(fb.auth, user => {
     currentUser = user;
-    // Admin = seulement l'email autorisé
     isAdmin = !!(user && user.email === ADMIN_EMAIL);
-
-    // Mettre à jour l'UI header
     updateUserUI(user);
-
-    // Si l'admin se déconnecte de la vue admin → retour user
     if (!isAdmin && document.getElementById('adminView').classList.contains('visible')) {
       switchView('user');
     }
   });
 
-  // Real-time listener
+  // Écoute temps réel des magasins
   fb.onSnapshot(fb.collection(fb.db, 'stores'), snap => {
     stores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderStores();
     renderAdminTable();
     updateAdminStats();
+  }, err => {
+    console.error('Firestore error:', err);
+    // Afficher quand même la carte vide
+    renderStores();
   });
-});
+}
 
 // ════════════════════════════════
 //  MAP
@@ -2066,24 +2067,24 @@ async function installPWA(banner) {
   window._pwaPrompt = null;
 }
 
-window.addEventListener('load',()=>{
+window.addEventListener('load', () => {
   initMap();
   applyLang();
+  initFirebase();   // ← lance Firebase dès que prêt (polling 100ms)
   initPlacePicker();
   setupPWA();
 
-  // 📍 Localisation automatique — attendre que la PWA soit prête
-  // Délai de 800ms pour laisser le temps à Android de charger le contexte
-  setTimeout(() => locateUser(true), 800);
+  // Localisation auto
+  setTimeout(() => locateUser(true), 600);
 
-  // Fallback Firebase
+  // Fallback : si Firebase ne répond pas après 5s → afficher carte vide
   setTimeout(() => {
-    if(!fb) {
-      console.warn('Firebase not ready — running in demo mode');
+    if (!stores.length) {
+      console.warn('[NearShop] Firebase timeout — affichage sans données');
       renderStores();
     }
     checkDeepLink();
-  }, 2000);
+  }, 5000);
 });
 </script>
 </body>
