@@ -1455,33 +1455,108 @@ function setRadius(km) {
 }
 
 function locateUser(silent=false){
+  // Vérifier que l'API est disponible
   if(!navigator.geolocation){
     if(!silent) showToast('Géolocalisation non supportée');
+    renderStores();
     return;
   }
-  // Show a subtle loading indicator on the button
-  const btn = document.querySelector('.locate-btn');
-  if(btn) { btn._origHTML = btn.innerHTML; btn.innerHTML = '⏳ Localisation...'; btn.disabled = true; }
+
+  // Vérifier la permission avant de demander (API moderne)
+  if(navigator.permissions){
+    navigator.permissions.query({name:'geolocation'}).then(result => {
+      if(result.state === 'denied'){
+        showPermissionHelp();
+        renderStores();
+        return;
+      }
+      doLocate(silent);
+    }).catch(() => doLocate(silent));
+  } else {
+    doLocate(silent);
+  }
+}
+
+function doLocate(silent=false){
+  // Indicateur de chargement sur tous les boutons de localisation
+  const btns = document.querySelectorAll('.locate-btn, #mnavLocate');
+  btns.forEach(btn => {
+    btn._origHTML = btn.innerHTML;
+    btn.style.opacity = '0.6';
+  });
 
   navigator.geolocation.getCurrentPosition(
     pos => {
       userLat = pos.coords.latitude;
       userLng = pos.coords.longitude;
       updateUserMarker(userLat, userLng);
-      map.setView([userLat, userLng], 14);
+      map.setView([userLat, userLng], 15);
       renderStores();
       if(!silent) showToast('📍 Position mise à jour !');
-      else showToast('📍 Bienvenue ! Magasins autour de vous chargés.');
-      if(btn) { btn.innerHTML = btn._origHTML; btn.disabled = false; }
+      else showToast('📍 Magasins autour de vous chargés !');
+      btns.forEach(btn => { btn.style.opacity = '1'; });
     },
     err => {
-      // Si refus ou erreur, on garde Bruxelles par défaut silencieusement
-      if(!silent) showToast('⚠️ Position non disponible — affichage par défaut.');
-      if(btn) { btn.innerHTML = btn._origHTML; btn.disabled = false; }
+      btns.forEach(btn => { btn.style.opacity = '1'; });
       renderStores();
+
+      // Messages d'erreur précis selon le code
+      if(err.code === 1) {
+        // PERMISSION_DENIED
+        showPermissionHelp();
+      } else if(err.code === 2) {
+        // POSITION_UNAVAILABLE
+        if(!silent) showToast('⚠️ Position indisponible — vérifiez votre GPS.');
+      } else if(err.code === 3) {
+        // TIMEOUT
+        if(!silent) showToast('⏱️ Délai dépassé — réessayez en plein air.');
+        else {
+          // En mode silencieux (auto), réessayer une fois après 2s
+          setTimeout(() => doLocate(false), 2000);
+        }
+      }
     },
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000
+    }
   );
+}
+
+function showPermissionHelp(){
+  // Bannière d'aide pour activer la localisation
+  const existing = document.getElementById('permHelp');
+  if(existing) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'permHelp';
+  banner.style.cssText = `position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:2px solid var(--accent2);border-radius:16px;padding:16px 18px;z-index:9999;font-family:'Syne',sans-serif;max-width:320px;width:calc(100% - 32px);box-shadow:var(--shadow);animation:slideIn .3s ease`;
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:1.6rem">📍</span>
+      <div>
+        <div style="font-weight:800;font-size:.9rem">Localisation bloquée</div>
+        <div style="font-size:.75rem;color:var(--muted)">Autorisez l'accès pour voir les magasins près de vous</div>
+      </div>
+    </div>
+    <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
+      <strong style="color:var(--text)">Sur Android :</strong><br>
+      Appui long sur l'icône NearShop →<br>
+      <strong style="color:var(--accent)">Infos app → Autorisations → Localisation → Autoriser</strong>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="doLocate(false);document.getElementById('permHelp').remove()" 
+        style="flex:1;padding:9px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer">
+        Réessayer
+      </button>
+      <button onclick="document.getElementById('permHelp').remove()" 
+        style="padding:9px 14px;background:var(--surface2);color:var(--muted);border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer">
+        Fermer
+      </button>
+    </div>`;
+  document.body.appendChild(banner);
+  setTimeout(() => banner?.remove(), 15000);
 }
 
 function showToast(msg){
@@ -1682,8 +1757,9 @@ window.addEventListener('load',()=>{
   initPlacePicker();
   setupPWA();
 
-  // 📍 Localisation automatique dès l'ouverture
-  locateUser(true);
+  // 📍 Localisation automatique — attendre que la PWA soit prête
+  // Délai de 800ms pour laisser le temps à Android de charger le contexte
+  setTimeout(() => locateUser(true), 800);
 
   // Fallback Firebase
   setTimeout(() => {
