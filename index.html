@@ -24,48 +24,48 @@
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDSmtbjCnEWnjRqW3ir5212FZzYRMF3Bts&libraries=places&language=fr" defer></script>
 
 <!-- Firebase SDKs -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, updateProfile }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-// ☁️ Photos via Cloudinary (gratuit) — pas de Firebase Storage
-
-// ══════════════════════════════════════════
-//  🔥 CONFIG FIREBASE
-// ══════════════════════════════════════════
+<!-- Firebase SDK via CDN compat (accessible globalement, pas de module) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+// ── CONFIG FIREBASE ──
 const firebaseConfig = {
   apiKey:            "AIzaSyDSmtbjCnEWnjRqW3ir5212FZzYRMF3Bts",
   authDomain:        "nearshop-app-b6dc2.firebaseapp.com",
   projectId:         "nearshop-app-b6dc2",
   storageBucket:     "nearshop-app-b6dc2.firebasestorage.app",
   messagingSenderId: "855058433751",
-  appId:             "1:855058433751:web:3f3093ddbe5e7f72611292",
-  measurementId:     "G-78Y59V1TP5"
+  appId:             "1:855058433751:web:3f3093ddbe5e7f72611292"
 };
-// ══════════════════════════════════════════
-
-// ══════════════════════════════════════════
-//  ☁️ CONFIG CLOUDINARY (photos, 100% gratuit)
-// ══════════════════════════════════════════
+firebase.initializeApp(firebaseConfig);
 window._cloudinary = { cloud: "dd2fsaqvl", preset: "nearshop" };
-// ══════════════════════════════════════════
 
-const app  = initializeApp(firebaseConfig);
-const db   = getFirestore(app);
-const auth = getAuth(app);
-const gProvider = new GoogleAuthProvider();
-
-// ── fb exposé plus bas ──
-
-// Stocker fb globalement — sera utilisé dès que le DOM est prêt
+// Exposer fb globalement
+window._fb = {
+  db:         firebase.firestore(),
+  auth:       firebase.auth(),
+  gProvider:  new firebase.auth.GoogleAuthProvider(),
+  // Firestore helpers
+  collection: (db, col)         => db.collection(col),
+  addDoc:     (ref, data)       => ref.add(data),
+  getDocs:    (ref)             => ref.get(),
+  doc:        (db, col, id)     => db.collection(col).doc(id),
+  updateDoc:  (ref, data)       => ref.update(data),
+  deleteDoc:  (ref)             => ref.delete(),
+  onSnapshot: (ref, cb, err)    => ref.onSnapshot(cb, err),
+  query:      (ref)             => ref,
+  orderBy:    (field, dir)      => field,
+  serverTimestamp: ()           => firebase.firestore.FieldValue.serverTimestamp(),
+  // Auth helpers
+  signInWithEmailAndPassword:   (auth, e, p)  => auth.signInWithEmailAndPassword(e, p),
+  createUserWithEmailAndPassword:(auth, e, p) => auth.createUserWithEmailAndPassword(e, p),
+  signInWithPopup:              (auth, prov)  => auth.signInWithPopup(prov),
+  signOut:                      (auth)        => auth.signOut(),
+  onAuthStateChanged:           (auth, cb)    => auth.onAuthStateChanged(cb),
+  updateProfile:                (user, data)  => user.updateProfile(data)
+};
 window._fbReady = true;
-window._fb = { db, auth, gProvider,
-  collection, addDoc, getDocs, doc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, signOut, onAuthStateChanged, updateProfile };
 </script>
 
 <style>
@@ -426,10 +426,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     </div>
     <div class="form-group">
       <label class="form-label">Mot de passe</label>
-      <input class="form-input" id="authPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()">
+      <input class="form-input" id="authPwd" type="password" placeholder="••••••••" onkeydown='if(event.key==='Enter')loginAdmin()">
     </div>
     <button class="form-submit" onclick="loginAdmin()">🔐 Accéder à l'administration</button>
-    <button class="form-cancel" onclick="document.getElementById('authWall').classList.add('hidden')" style="margin-top:8px">Annuler</button>
+    <button class="form-cancel" onclick='document.getElementById('authWall').classList.add('hidden')" style="margin-top:8px">Annuler</button>
     <div class="auth-note" style="margin-top:14px">⚠️ Accès réservé à l'administrateur uniquement.</div>
   </div>
 </div>
@@ -438,7 +438,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 <div class="user-auth-modal hidden" id="userAuthModal">
   <div class="user-auth-box">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem">👤 Mon compte</div>
+      <div style='font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem">👤 Mon compte</div>
       <button onclick="closeUserAuth()" style="background:var(--surface2);border:none;border-radius:50%;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
     </div>
     <!-- Onglets Connexion / Inscription -->
@@ -456,7 +456,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       </div>
       <div class="form-group">
         <label class="form-label">Mot de passe</label>
-        <input class="form-input" id="userPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginUser()">
+        <input class="form-input" id="userPwd" type="password" placeholder="••••••••" onkeydown='if(event.key==='Enter')loginUser()">
       </div>
       <button class="form-submit" onclick="loginUser()">✅ Se connecter</button>
       <div class="auth-divider">ou</div>
@@ -478,7 +478,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       </div>
       <div class="form-group">
         <label class="form-label">Mot de passe</label>
-        <input class="form-input" id="regPwd" type="password" placeholder="Min. 6 caractères" onkeydown="if(event.key==='Enter')registerUser()">
+        <input class="form-input" id="regPwd" type="password" placeholder="Min. 6 caractères" onkeydown='if(event.key==='Enter')registerUser()">
       </div>
       <button class="form-submit" onclick="registerUser()">🚀 Créer mon compte</button>
       <div class="auth-divider">ou</div>
@@ -517,7 +517,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     </button>
     <!-- Utilisateur connecté : avatar / bouton compte -->
     <div id="userAvatarBtn" style="display:none" onclick="toggleUserMenu()"></div>
-    <button class="icon-btn" id="loginBtn" onclick="openUserAuth()" title="Se connecter" style="font-size:.75rem;padding:0 10px;width:auto;gap:4px">👤 <span style="font-family:'Syne',sans-serif;font-weight:700">Connexion</span></button>
+    <button class="icon-btn" id="loginBtn" onclick="openUserAuth()" title="Se connecter" style="font-size:.75rem;padding:0 10px;width:auto;gap:4px">👤 <span style='font-family:'Syne',sans-serif;font-weight:700">Connexion</span></button>
   </div>
 </header>
 
@@ -547,7 +547,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   <div class="mobile-panel-topbar">
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:1rem">📋</span>
-      <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem">Magasins proches</span>
+      <span style='font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem">Magasins proches</span>
       <span class="count-badge" id="countBadgeMobile">0</span>
     </div>
     <button class="panel-close-btn" id="panelCloseBtn" onclick="closeMobilePanel()">✕</button>
@@ -624,7 +624,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
         <!-- INFOS RÉCUPÉRÉES AUTOMATIQUEMENT -->
         <div class="fetched-info" id="fetchedInfo">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:10px;color:var(--text)">📥 Informations récupérées depuis Google Maps</div>
+          <div style='font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:10px;color:var(--text)">📥 Informations récupérées depuis Google Maps</div>
           <div class="fetched-row" id="fi-row-name" style="display:none">🏪 <span style="color:var(--muted);min-width:80px">Nom</span><strong id="fi-name"></strong></div>
           <div class="fetched-row" id="fi-row-address" style="display:none">📍 <span style="color:var(--muted);min-width:80px">Adresse</span><strong id="fi-address"></strong></div>
           <div class="fetched-row" id="fi-row-phone" style="display:none">📞 <span style="color:var(--muted);min-width:80px">Téléphone</span><strong id="fi-phone"></strong></div>
@@ -843,7 +843,7 @@ let fb = null;
 let currentUser = null;
 let isAdmin = false;
 // ⚠️ EMAIL ADMIN AUTORISÉ — changer avec votre email
-const ADMIN_EMAIL = 'lahouchki@gmail.com';
+const ADMIN_EMAIL = 'admin@nearshop.app';
 
 // ════════════════════════════════
 //  FIREBASE INIT
@@ -1235,8 +1235,8 @@ function renderStores() {
   const cats=[...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
   const fr=document.getElementById('filterRow');
   if(fr){
-    fr.innerHTML=`<button class="filter-chip ${catFilter==='all'?'active':''}" onclick="setCatFilter(this,'all')">Tous</button>`;
-    cats.forEach(c=>{fr.innerHTML+=`<button class="filter-chip ${catFilter===c?'active':''}" onclick="setCatFilter(this,'${c.replace(/'/g,"\\'")}')">${c}</button>`;});
+    fr.innerHTML='<button class="filter-chip '+(catFilter==='all'?'active':'')+' " onclick="setCatFilter(this,\'all\')" >Tous</button>';
+    cats.forEach(c=>{const sc=c.replace(/'/g,'\\\'');fr.innerHTML+='<button class="filter-chip '+(catFilter===c?'active':'')+' " onclick="setCatFilter(this,\''+sc+'\')" >'+c+'</button>';});
   }
 
   const list=document.getElementById('storeList');
@@ -1267,9 +1267,9 @@ function renderStores() {
     list.appendChild(div);
 
     // map marker
-    const icon=L.divIcon({html:`<div style="background:${s.status==='open'?'var(--accent)':'var(--accent2)'};color:#000;font-size:1.1rem;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer">${s.cat?s.cat.split(' ')[0]:''}</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17]});
+    const icon=L.divIcon({html:`<div style='background:${s.status==='open'?'var(--accent)':'var(--accent2)'};color:#000;font-size:1.1rem;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer'>${s.cat?s.cat.split(' ')[0]:''}</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17]});
     const mk=L.marker([s.lat,s.lng],{icon}).addTo(map);
-    mk.bindPopup(`<div class="popup-inner"><div class="popup-name">${s.name}</div><div class="popup-cat">${s.cat} · ${distStr(s)}</div><button class="popup-btn" onclick="openStoreById('${s.id}')">Voir les détails</button></div>`);
+    mk.bindPopup(`<div class="popup-inner"><div class="popup-name">${s.name}</div><div class="popup-cat">${s.cat} · ${distStr(s)}</div><button class="popup-btn" onclick='openStoreById('${s.id}')">Voir les détails</button></div>`);
     mapMarkers.push(mk);
   });
 }
@@ -1458,7 +1458,7 @@ function editStore(id){
   document.getElementById('f-existingPhotos').value=JSON.stringify(s.photos||[]);
   pendingPhotos=[];
   const prev=document.getElementById('photoPreview');
-  prev.innerHTML=(s.photos||[]).map((u,i)=>`<div class="photo-thumb-wrap"><img src="${u}" class="photo-thumb"><button class="photo-remove" onclick="removeExistingPhoto(${i},this.parentNode)">✕</button></div>`).join('');
+  prev.innerHTML=(s.photos||[]).map((u,i)=>`<div class="photo-thumb-wrap"><img src="${u}" class="photo-thumb"><button class="photo-remove" onclick="removeExistingPhoto(${i},this.parentNode)'>✕</button></div>`).join('');
   document.getElementById('formTitle').textContent='Modifier un magasin';
   document.querySelector('.admin-form-card').scrollIntoView({behavior:'smooth'});
 }
@@ -1472,7 +1472,7 @@ function removeExistingPhoto(idx,el){
 
 async function deleteStore(id){
   if(!confirm('Supprimer ce magasin définitivement ?'))return;
-  try{await fb.deleteDoc(fb.doc(fb.db,'stores',id));showToast('🗑️ Magasin supprimé');}
+  try{await fb.deleteDoc(fb.doc(fb.db,'stores',id));showToast('🗑️ Magasin supprimé !');}
   catch(e){showToast('❌ '+e.message);}
 }
 
@@ -1497,7 +1497,7 @@ function renderAdminTable(){
       <td style="font-size:1.2rem">${s.cat?s.cat.split(' ')[0]:''}</td>
       <td><div style="font-weight:600;font-size:.85rem">${s.name}</div><div style="font-size:.72rem;color:var(--muted)">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div></td>
       <td style="color:var(--muted);font-size:.8rem">${s.address}</td>
-      <td><span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'};font-weight:600;font-size:.8rem">${s.status==='open'?'🟢 Ouvert':'🔴 Fermé'}</span></td>
+      <td><span style='color:${s.status==='open'?'var(--green)':'var(--accent2)'};font-weight:600;font-size:.8rem'>${s.status==='open'?'🟢 Ouvert':'🔴 Fermé'}</span></td>
       <td style="display:flex;gap:5px">
         <button class="tbl-btn edit" onclick="editStore('${s.id}')">✏️ Modifier</button>
         <button class="tbl-btn delete" onclick="deleteStore('${s.id}')">🗑️</button>
@@ -1612,7 +1612,7 @@ async function registerUser(){
   err.style.display = 'none';
 
   if(!name){ err.textContent = '❌ Entrez un prénom ou pseudo.'; err.style.display='block'; return; }
-  if(email === ADMIN_EMAIL){ err.textContent = '🚫 Cet email n'est pas disponible.'; err.style.display='block'; return; }
+  if(email === ADMIN_EMAIL){ err.textContent = '🚫 Cet email non disponible.'; err.style.display='block'; return; }
   if(pwd.length < 6){ err.textContent = '❌ Mot de passe trop court (min. 6 caractères).'; err.style.display='block'; return; }
 
   try{
@@ -1824,7 +1824,7 @@ function showPermissionHelp(){
       <span style="font-size:1.6rem">📍</span>
       <div>
         <div style="font-weight:800;font-size:.9rem">Localisation bloquée</div>
-        <div style="font-size:.75rem;color:var(--muted)">Autorisez l'accès pour voir les magasins près de vous</div>
+        <div style="font-size:.75rem;color:var(--muted)">Autorisez l acces pour voir les magasins près de vous</div>
       </div>
     </div>
     <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
@@ -1833,12 +1833,12 @@ function showPermissionHelp(){
       <strong style="color:var(--accent)">Infos app → Autorisations → Localisation → Autoriser</strong>
     </div>
     <div style="display:flex;gap:8px">
-      <button onclick="doLocate(false);document.getElementById('permHelp').remove()" 
-        style="flex:1;padding:9px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer">
+      <button onclick='doLocate(false);document.getElementById('permHelp').remove()" 
+        style='flex:1;padding:9px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer">
         Réessayer
       </button>
-      <button onclick="document.getElementById('permHelp').remove()" 
-        style="padding:9px 14px;background:var(--surface2);color:var(--muted);border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer">
+      <button onclick='document.getElementById('permHelp').remove()" 
+        style='padding:9px 14px;background:var(--surface2);color:var(--muted);border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer">
         Fermer
       </button>
     </div>`;
@@ -1929,9 +1929,9 @@ function renderStoresMobile() {
   const cats = [...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
   const frm = document.getElementById('filterRowMobile');
   if(frm){
-    frm.innerHTML = `<button class="filter-chip ${catFilter==='all'?'active':''}" onclick="setCatFilter(this,'all');renderStoresMobile()">Tous</button>`;
+    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
     cats.forEach(c => {
-      frm.innerHTML += `<button class="filter-chip ${catFilter===c?'active':''}" onclick="setCatFilter(this,'${c.replace(/'/g,"\'")}');renderStoresMobile()">${c}</button>`;
+    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
     });
   }
 
@@ -2025,8 +2025,8 @@ function showUpdateBanner(reg) {
   banner.innerHTML = `
     <span style="font-size:1.4rem">🔄</span>
     <div style="flex:1"><div style="font-weight:700;font-size:.85rem">Mise à jour disponible</div><div style="font-size:.73rem;color:var(--muted)">Rechargez pour profiter des nouveautés</div></div>
-    <button onclick="reg.waiting.postMessage({type:'SKIP_WAITING'});location.reload()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 12px;font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;cursor:pointer">Mettre à jour</button>
-    <button onclick="this.closest('div').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>`;
+    <button onclick='reg.waiting.postMessage({type:'SKIP_WAITING'});location.reload()" style='background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 12px;font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;cursor:pointer">Mettre à jour</button>
+    <button onclick='this.closest('div').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>`;
   document.body.appendChild(banner);
 }
 
@@ -2038,8 +2038,8 @@ function showIOSHint() {
   hint.innerHTML = `
     <div style="font-size:1.5rem;margin-bottom:8px">📲</div>
     <div style="font-weight:700;font-size:.88rem;margin-bottom:5px">Installer NearShop</div>
-    <div style="font-size:.78rem;color:var(--muted);line-height:1.5">Appuyez sur <strong style="color:var(--text)">□↑</strong> puis <strong style="color:var(--text)">"Sur l'écran d'accueil"</strong></div>
-    <button onclick="this.closest('div').remove()" style="margin-top:10px;background:var(--surface2);border:none;border-radius:8px;padding:6px 16px;color:var(--muted);font-family:'Syne',sans-serif;cursor:pointer;font-size:.78rem">Fermer</button>`;
+    <div style="font-size:.78rem;color:var(--muted);line-height:1.5">Appuyez sur <strong style="color:var(--text)">□↑</strong> puis <strong style="color:var(--text)">'Sur l'écran d'accueil"</strong></div>
+    <button onclick='this.closest('div').remove()" style='margin-top:10px;background:var(--surface2);border:none;border-radius:8px;padding:6px 16px;color:var(--muted);font-family:'Syne',sans-serif;cursor:pointer;font-size:.78rem">Fermer</button>`;
   document.body.appendChild(hint);
   setTimeout(() => hint.remove(), 10000);
 }
@@ -2053,8 +2053,8 @@ function showInstallBanner(promptEvent) {
       <div style="font-weight:700;font-size:.88rem">Installer NearShop</div>
       <div style="font-size:.75rem;color:var(--muted)">Accès rapide depuis votre écran d'accueil</div>
     </div>
-    <button onclick="installPWA(this.closest('div[style]'), arguments[0]._prompt || window._pwaPrompt)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 13px;font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer">Installer</button>
-    <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem">✕</button>`;
+    <button onclick='installPWA(this.closest('div[style]'), arguments[0]._prompt || window._pwaPrompt)" style='background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 13px;font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer">Installer</button>
+    <button onclick='this.closest('div[style]').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem">✕</button>`;
   window._pwaPrompt = promptEvent;
   document.body.appendChild(banner);
   setTimeout(() => banner.remove(), 12000);
