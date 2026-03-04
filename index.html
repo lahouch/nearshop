@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDSmtbjCnEWnjRqW3ir5212FZzYRMF3Bts&libraries=places&language=fr" defer></script>
 
 <!-- Firebase SDKs -->
 <script type="module">
@@ -252,6 +253,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
 /* ── STATS GRID ── */
 .stat-box{background:var(--surface);border-radius:10px;padding:11px;text-align:center;}
+
+/* ── PLACE PICKER ── */
+.place-search-wrap{position:relative;margin-bottom:14px;}
+.place-search-input{width:100%;background:var(--bg);border:2px solid var(--accent);border-radius:10px;padding:11px 14px 11px 40px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92rem;outline:none;}
+.place-search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none;}
+.place-search-input::placeholder{color:var(--muted);}
+.pac-container{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.4)!important;font-family:'DM Sans',sans-serif!important;margin-top:4px!important;}
+.pac-item{padding:9px 14px!important;color:var(--text)!important;border-top:1px solid var(--border)!important;cursor:pointer!important;font-size:.85rem!important;}
+.pac-item:hover{background:var(--surface2)!important;}
+.pac-item-query{color:var(--text)!important;font-weight:600!important;}
+.pac-matched{color:var(--accent)!important;}
+#adminPickerMap{width:100%;height:200px;border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden;}
+.fetched-info{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;display:none;}
+.fetched-row{display:flex;align-items:center;gap:8px;font-size:.83rem;margin-bottom:5px;color:var(--muted);}
+.fetched-row strong{color:var(--text);}
+.fetched-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(61,255,160,.1);color:var(--green);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:700;}
 .stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;}
 .stat-lbl{font-size:.7rem;color:var(--muted);margin-top:2px;}
 
@@ -348,6 +365,25 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       <div class="admin-form-card">
         <div class="admin-form-title">➕ <span id="formTitle">Ajouter un magasin</span></div>
 
+        <!-- GOOGLE PLACE SEARCH -->
+        <div class="place-search-wrap">
+          <span class="place-search-icon">🔍</span>
+          <input class="place-search-input" id="placeSearch" placeholder="Rechercher un commerce sur Google Maps...">
+        </div>
+
+        <!-- MINI MAP PICKER -->
+        <div id="adminPickerMap"></div>
+
+        <!-- INFOS RÉCUPÉRÉES AUTOMATIQUEMENT -->
+        <div class="fetched-info" id="fetchedInfo">
+          <div class="fetched-row">📍 <strong id="fi-address"></strong></div>
+          <div class="fetched-row">📞 <strong id="fi-phone"></strong></div>
+          <div class="fetched-row">🕐 <strong id="fi-hours"></strong></div>
+          <div class="fetched-row">📌 <strong id="fi-coords"></strong></div>
+          <div style="margin-top:6px"><span class="fetched-badge">✅ Infos récupérées depuis Google Maps</span></div>
+        </div>
+
+        <!-- CHAMPS (pré-remplis automatiquement, modifiables) -->
         <div class="form-group">
           <label class="form-label" data-i18n="storeName">Nom du magasin</label>
           <input class="form-input" id="f-name" placeholder="Ex: Boulangerie Martin">
@@ -580,9 +616,121 @@ window.addEventListener('fbReady', () => {
 // ════════════════════════════════
 function initMap() {
   map = L.map('map', { zoomControl: false }).setView([userLat, userLng], 14);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+  // Style Google Maps-like (couleurs réalistes)
+  L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0','mt1','mt2','mt3'],
+    attribution: '&copy; Google Maps'
+  }).addTo(map);
   L.control.zoom({ position: 'topright' }).addTo(map);
   updateUserMarker(userLat, userLng);
+}
+
+// ════════════════════════════════
+//  ADMIN PLACE PICKER
+// ════════════════════════════════
+let adminPickerMap = null;
+let adminPickerMarker = null;
+
+function initAdminMap() {
+  if (adminPickerMap) return;
+  adminPickerMap = L.map('adminPickerMap', { zoomControl: true }).setView([50.8503, 4.3517], 13);
+  L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
+  }).addTo(adminPickerMap);
+
+  // Clic sur la mini-map pour placer manuellement
+  adminPickerMap.on('click', function(e) {
+    placeAdminMarker(e.latlng.lat, e.latlng.lng);
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function placeAdminMarker(lat, lng) {
+  if (adminPickerMarker) adminPickerMap.removeLayer(adminPickerMarker);
+  adminPickerMarker = L.marker([lat, lng], { icon: L.divIcon({
+    html: `<div style="width:22px;height:22px;background:#f0c040;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(240,192,64,.9)"></div>`,
+    className:'', iconSize:[22,22], iconAnchor:[11,11]
+  })}).addTo(adminPickerMap);
+  document.getElementById('f-lat').value = lat.toFixed(6);
+  document.getElementById('f-lng').value = lng.toFixed(6);
+  document.getElementById('fi-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+    const data = await res.json();
+    if (data.display_name) {
+      document.getElementById('f-address').value = data.display_name.split(',').slice(0,4).join(',').trim();
+      document.getElementById('fi-address').textContent = document.getElementById('f-address').value;
+      document.getElementById('fetchedInfo').style.display = 'block';
+    }
+  } catch(e) {}
+}
+
+function initPlacePicker() {
+  if (!window.google || !window.google.maps) {
+    setTimeout(initPlacePicker, 500); return;
+  }
+  initAdminMap();
+  const input = document.getElementById('placeSearch');
+  if (!input) return;
+  const autocomplete = new google.maps.places.Autocomplete(input, { language: 'fr' });
+
+  autocomplete.addListener('place_changed', () => {
+    const place = autocomplete.getPlace();
+    if (!place.geometry) { showToast('⚠️ Lieu non trouvé'); return; }
+
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+
+    // Remplir les champs automatiquement
+    document.getElementById('f-name').value = place.name || '';
+    document.getElementById('f-address').value = place.formatted_address || '';
+    document.getElementById('f-phone').value = place.formatted_phone_number || place.international_phone_number || '';
+
+    // Horaires
+    if (place.opening_hours && place.opening_hours.weekday_text) {
+      document.getElementById('f-hours').value = place.opening_hours.weekday_text.slice(0,3).join(' | ');
+    }
+
+    // Statut ouvert/fermé
+    if (place.opening_hours) {
+      document.getElementById('f-status').value = place.opening_hours.isOpen() ? 'open' : 'closed';
+    }
+
+    // Catégorie automatique selon les types Google
+    const types = place.types || [];
+    let cat = '🏪 Autre';
+    if (types.some(t => ['bakery'].includes(t))) cat = '🍞 Boulangerie';
+    else if (types.some(t => ['supermarket','grocery_or_supermarket','convenience_store'].includes(t))) cat = '🛒 Supermarché';
+    else if (types.some(t => ['pharmacy','drugstore'].includes(t))) cat = '💊 Pharmacie';
+    else if (types.some(t => ['clothing_store'].includes(t))) cat = '👗 Vêtements';
+    else if (types.some(t => ['restaurant','food'].includes(t))) cat = '🍕 Restaurant';
+    else if (types.some(t => ['cafe'].includes(t))) cat = '☕ Café';
+    else if (types.some(t => ['hardware_store'].includes(t))) cat = '🔧 Bricolage';
+    else if (types.some(t => ['book_store'].includes(t))) cat = '📚 Librairie';
+    else if (types.some(t => ['florist'].includes(t))) cat = '🌸 Fleuriste';
+    document.getElementById('f-cat').value = cat;
+
+    // Coords
+    document.getElementById('f-lat').value = lat.toFixed(6);
+    document.getElementById('f-lng').value = lng.toFixed(6);
+
+    // Mini-map
+    adminPickerMap.setView([lat, lng], 17);
+    placeAdminMarker(lat, lng);
+
+    // Afficher le récap
+    document.getElementById('fi-address').textContent = place.formatted_address || '–';
+    document.getElementById('fi-phone').textContent = place.formatted_phone_number || '–';
+    document.getElementById('fi-hours').textContent = place.opening_hours?.weekday_text?.[0] || '–';
+    document.getElementById('fi-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('fetchedInfo').style.display = 'block';
+
+    showToast('✅ Infos récupérées depuis Google Maps !');
+  });
 }
 
 function updateUserMarker(lat, lng) {
@@ -878,6 +1026,9 @@ function resetForm(){
   document.getElementById('f-status').value='open';
   document.getElementById('formTitle').textContent='Ajouter un magasin';
   document.getElementById('photoPreview').innerHTML='';
+  document.getElementById('fetchedInfo').style.display='none';
+  const ps=document.getElementById('placeSearch'); if(ps) ps.value='';
+  if(adminPickerMarker && adminPickerMap){ adminPickerMap.removeLayer(adminPickerMarker); adminPickerMarker=null; }
   pendingPhotos=[];
 }
 
@@ -958,6 +1109,7 @@ function switchView(v){
   document.getElementById('userView').classList.toggle('hidden',v==='admin');
   document.getElementById('adminView').classList.toggle('visible',v==='admin');
   if(v==='admin'&&!isAdmin){requireAdmin();return;}
+  if(v==='admin') { setTimeout(()=>{ initAdminMap(); if(adminPickerMap) adminPickerMap.invalidateSize(); }, 100); }
 }
 
 function setCatFilter(el,cat){catFilter=cat;renderStores();}
@@ -991,6 +1143,7 @@ function checkDeepLink(){
 window.addEventListener('load',()=>{
   initMap();
   applyLang();
+  initPlacePicker();
   // If Firebase takes too long or isn't configured, show empty map anyway
   setTimeout(() => {
     if(!fb) {
