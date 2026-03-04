@@ -1,0 +1,44 @@
+{
+  "name": "NearShop",
+  "short_name": "NearShop",
+  "description": "Trouvez les magasins autour de vous en quelques secondes",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d0f14",
+  "theme_color": "#161921",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "categories": ["shopping", "lifestyle", "navigation"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Explorer les magasins",
+      "short_name": "Explorer",
+      "description": "Voir les magasins autour de moi",
+      "url": "./index.html",
+      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fond rond -->
+  <rect width="512" height="512" rx="112" fill="#161921"/>
+
+  <!-- Pin localisation principal -->
+  <ellipse cx="256" cy="370" rx="48" ry="14" fill="#0d0f14" opacity=".4"/>
+  <path d="M256 100 C196 100 148 148 148 208 C148 280 256 390 256 390 C256 390 364 280 364 208 C364 148 316 100 256 100Z" fill="#f0c040"/>
+  <circle cx="256" cy="208" r="44" fill="#161921"/>
+
+  <!-- Lettre N stylisée dans le pin -->
+  <text x="256" y="226" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="52" fill="#f0c040">N</text>
+
+  <!-- Petits points magasins autour -->
+  <circle cx="150" cy="310" r="14" fill="#ff6b35" opacity=".9"/>
+  <circle cx="362" cy="295" r="10" fill="#3dffa0" opacity=".9"/>
+  <circle cx="175" cy="170" r="8"  fill="#ff6b35" opacity=".6"/>
+  <circle cx="355" cy="160" r="11" fill="#3dffa0" opacity=".6"/>
+
+  <!-- Lignes de route stylisées -->
+  <line x1="150" y1="310" x2="200" y2="340" stroke="#2a2f3e" stroke-width="5" stroke-linecap="round"/>
+  <line x1="362" y1="295" x2="312" y2="335" stroke="#2a2f3e" stroke-width="5" stroke-linecap="round"/>
+</svg>
