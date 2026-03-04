@@ -132,8 +132,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 /* ── MAP ── */
 #map{flex:1;background:var(--bg);width:100%;height:100%;min-height:400px;}
 .map-wrap{position:relative;flex:1;min-height:400px;}
-.radius-info{position:absolute;bottom:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 14px;z-index:1000;font-size:.78rem;color:var(--muted);font-family:'Syne',sans-serif;font-weight:600;}
+.radius-info{position:absolute;bottom:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;z-index:1000;font-family:'Syne',sans-serif;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.3);}
 .radius-info span{color:var(--accent);}
+.radius-label{font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.radius-btns{display:flex;gap:5px;align-items:center;}
+.radius-btn{padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer;transition:all .2s;}
+.radius-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.radius-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
 
 /* ── MODAL ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(5px);}
@@ -350,7 +355,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   </div>
   <div class="map-wrap">
     <div id="map"></div>
-    <div class="radius-info"><span data-i18n="radius">Rayon</span> : <span>5 km</span></div>
+    <div class="radius-info">
+      <div class="radius-label">📍 Rayon de recherche</div>
+      <div class="radius-btns">
+        <button class="radius-btn" onclick="setRadius(1)">1 km</button>
+        <button class="radius-btn" onclick="setRadius(2)">2 km</button>
+        <button class="radius-btn active" id="radiusBtn5" onclick="setRadius(5)">5 km</button>
+        <button class="radius-btn" onclick="setRadius(10)">10 km</button>
+        <button class="radius-btn" onclick="setRadius(20)">20 km</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -587,6 +601,7 @@ let map, userMarker, radiusCircle;
 let mapMarkers = [];
 let userLat = 50.8503, userLng = 4.3517;
 let catFilter = 'all';
+let searchRadius = 5; // km — modifiable par l'utilisateur
 let activeStoreId = null;
 let currentRating = 0;
 let pendingPhotos = []; // File objects to upload
@@ -812,7 +827,7 @@ function updateUserMarker(lat, lng) {
     html: `<div style="width:16px;height:16px;background:#f0c040;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(240,192,64,.8)"></div>`,
     className:'', iconSize:[16,16], iconAnchor:[8,8]
   })}).addTo(map);
-  radiusCircle = L.circle([lat, lng], { radius:5000, color:'#f0c040', fillColor:'#f0c040', fillOpacity:.05, weight:1, dashArray:'6,6' }).addTo(map);
+  radiusCircle = L.circle([lat, lng], { radius:searchRadius*1000, color:'#f0c040', fillColor:'#f0c040', fillOpacity:.05, weight:1, dashArray:'6,6' }).addTo(map);
 }
 
 // ════════════════════════════════
@@ -838,7 +853,7 @@ function renderStores() {
 
   const q = (document.getElementById('searchInput')||{value:''}).value.toLowerCase();
   const filtered = stores.filter(s => {
-    const d=dist(s); if(d>5)return false;
+    const d=dist(s); if(d>searchRadius)return false;
     if(catFilter!=='all'&&s.cat!==catFilter)return false;
     if(q&&!s.name.toLowerCase().includes(q)&&!s.address.toLowerCase().includes(q)&&!s.cat.toLowerCase().includes(q))return false;
     return true;
@@ -848,7 +863,7 @@ function renderStores() {
   if(badge) badge.textContent=filtered.length;
 
   // filter chips
-  const cats=[...new Set(stores.filter(s=>dist(s)<=5).map(s=>s.cat))];
+  const cats=[...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
   const fr=document.getElementById('filterRow');
   if(fr){
     fr.innerHTML=`<button class="filter-chip ${catFilter==='all'?'active':''}" onclick="setCatFilter(this,'all')">Tous</button>`;
@@ -1186,6 +1201,22 @@ function switchView(v){
 }
 
 function setCatFilter(el,cat){catFilter=cat;renderStores();}
+
+function setRadius(km) {
+  searchRadius = km;
+  // Mettre à jour les boutons
+  document.querySelectorAll('.radius-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === km + ' km');
+  });
+  // Mettre à jour le cercle sur la carte
+  if(radiusCircle) {
+    radiusCircle.setRadius(km * 1000);
+  }
+  // Réinitialiser le filtre catégorie si plus aucun magasin dans le périmètre
+  catFilter = 'all';
+  renderStores();
+  showToast(`📍 Rayon mis à jour : ${km} km`);
+}
 
 function locateUser(silent=false){
   if(!navigator.geolocation){
