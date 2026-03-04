@@ -2,7 +2,17 @@
 <html lang="fr" data-theme="dark" data-lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NearShop">
+<meta name="application-name" content="NearShop">
+<meta name="theme-color" content="#161921">
+<meta name="description" content="Trouvez les magasins autour de vous">
+<meta name="msapplication-TileColor" content="#f0c040">
+<link rel="manifest" id="pwaManifest">
+<!-- Apple touch icons (inline via JS) -->
 <title>NearShop</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -68,7 +78,64 @@ setTimeout(() => window.dispatchEvent(new Event('fbReady')), 0);
 }
 
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;transition:background .3s,color .3s;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;transition:background .3s,color .3s;-webkit-tap-highlight-color:transparent;}
+
+/* ── MOBILE NAV BAR (bottom) ── */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--surface);border-top:1px solid var(--border);z-index:2000;flex-direction:row;align-items:center;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom);}
+.mobile-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:.65rem;font-family:'Syne',sans-serif;font-weight:700;padding:8px 0;transition:color .2s;}
+.mobile-nav-btn.active{color:var(--accent);}
+.mobile-nav-btn svg{width:22px;height:22px;}
+.mobile-nav-icon{font-size:1.3rem;}
+
+/* ── MOBILE PANEL (liste magasins) ── */
+.mobile-panel{display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--surface);border-radius:20px 20px 0 0;z-index:1500;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:75vh;overflow:hidden;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);}
+.mobile-panel.open{transform:translateY(0);}
+.mobile-panel-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 6px;flex-shrink:0;cursor:pointer;}
+.mobile-panel-content{overflow-y:auto;flex:1;padding:0 12px 12px;}
+.mobile-panel-content::-webkit-scrollbar{display:none;}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  header{padding:0 14px;height:56px;gap:8px;}
+  .logo{font-size:1.1rem;}
+  .nav-tabs{display:none;}
+  .header-right{gap:6px;}
+  .locate-btn span{display:none;}
+  .locate-btn{padding:0 12px;}
+  .lang-btn{padding:0 9px;font-size:.72rem;}
+  .icon-btn{width:32px;height:32px;}
+
+  .app-body{flex-direction:column;}
+  .user-view{position:relative;}
+  .sidebar{display:none !important;}
+  .map-wrap{flex:1;width:100%;}
+  #map{height:100% !important;}
+
+  .radius-info{bottom:72px;right:10px;padding:7px 10px;}
+  .radius-btns{gap:3px;}
+  .radius-btn{padding:4px 7px;font-size:.7rem;}
+  .radius-label{font-size:.65rem;margin-bottom:4px;}
+
+  .mobile-nav{display:flex;}
+  .mobile-panel{display:flex;}
+
+  body{padding-bottom:0;}
+  .admin-view{padding:14px 12px 80px;}
+  .admin-grid{grid-template-columns:1fr !important;}
+  .admin-table-card{grid-column:span 1 !important;}
+  .admin-table{font-size:.8rem;}
+  .admin-table th{font-size:.7rem;}
+
+  .modal{border-radius:20px 20px 0 0;max-height:92vh;position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;}
+  .modal-overlay{align-items:flex-end;padding:0;}
+  .modal-img{height:160px;}
+
+  .auth-box{border-radius:20px;padding:24px;}
+}
+
+@media (max-width: 480px) {
+  .radius-btns{flex-wrap:wrap;gap:4px;}
+}
 
 /* ── HEADER ── */
 header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:62px;background:var(--surface);border-bottom:1px solid var(--border);z-index:1000;flex-shrink:0;gap:12px;}
@@ -336,6 +403,45 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     <button class="icon-btn" id="logoutBtn" style="display:none" onclick="doLogout()" title="Déconnexion">🚪</button>
   </div>
 </header>
+
+<!-- ══ MOBILE BOTTOM NAV ══ -->
+<nav class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-btn active" id="mnavExplore" onclick="mobileNav('explore')">
+    <span class="mobile-nav-icon">🗺️</span>
+    <span>Explorer</span>
+  </button>
+  <button class="mobile-nav-btn" id="mnavList" onclick="mobileNav('list')">
+    <span class="mobile-nav-icon">📋</span>
+    <span>Magasins</span>
+  </button>
+  <button class="mobile-nav-btn" id="mnavLocate" onclick="locateUser(false)">
+    <span class="mobile-nav-icon">📍</span>
+    <span>Me situer</span>
+  </button>
+  <button class="mobile-nav-btn" id="mnavAdmin" onclick="requireAdmin()">
+    <span class="mobile-nav-icon">⚙️</span>
+    <span>Admin</span>
+  </button>
+</nav>
+
+<!-- ══ MOBILE PANEL (liste magasins) ══ -->
+<div class="mobile-panel" id="mobilePanel">
+  <div class="mobile-panel-handle" onclick="closeMobilePanel()"></div>
+  <div class="sidebar-header" style="padding:0 14px 12px;flex-shrink:0;">
+    <div class="sidebar-title">
+      <span>Magasins proches</span>
+      <span class="count-badge" id="countBadgeMobile">0</span>
+    </div>
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInputMobile" placeholder="Nom, adresse..." oninput="syncSearch(this)">
+    </div>
+    <div class="filter-row" id="filterRowMobile"></div>
+  </div>
+  <div class="mobile-panel-content">
+    <div class="store-list" id="storeListMobile" style="padding:0;"></div>
+  </div>
+</div>
 
 <!-- ══ USER VIEW ══ -->
 <div class="app-body user-view" id="userView">
@@ -977,6 +1083,7 @@ function starsHtml(r,size='.82rem'){if(!r)return'';const f=Math.round(r);return`
 function renderStores() {
   if (!map) { setTimeout(renderStores, 300); return; }
   mapMarkers.forEach(m => map.removeLayer(m)); mapMarkers=[];
+  if(mobilePanelOpen) renderStoresMobile();
 
   const q = (document.getElementById('searchInput')||{value:''}).value.toLowerCase();
   const filtered = stores.filter(s => {
@@ -1391,10 +1498,183 @@ function checkDeepLink(){
 // ════════════════════════════════
 //  BOOT
 // ════════════════════════════════
+// ════════════════════════════════
+//  MOBILE FUNCTIONS
+// ════════════════════════════════
+let mobilePanelOpen = false;
+
+function mobileNav(tab) {
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  if (tab === 'explore') {
+    document.getElementById('mnavExplore').classList.add('active');
+    closeMobilePanel();
+    if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
+  } else if (tab === 'list') {
+    document.getElementById('mnavList').classList.add('active');
+    openMobilePanel();
+    if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
+  } else if (tab === 'admin') {
+    requireAdmin();
+  }
+}
+
+function openMobilePanel() {
+  document.getElementById('mobilePanel').classList.add('open');
+  mobilePanelOpen = true;
+  renderStoresMobile();
+}
+
+function closeMobilePanel() {
+  document.getElementById('mobilePanel').classList.remove('open');
+  mobilePanelOpen = false;
+  document.getElementById('mnavExplore').classList.add('active');
+  document.getElementById('mnavList').classList.remove('active');
+}
+
+function syncSearch(el) {
+  // Synchronise les deux barres de recherche (desktop + mobile)
+  document.getElementById('searchInput').value = el.value;
+  document.getElementById('searchInputMobile').value = el.value;
+  renderStores();
+  renderStoresMobile();
+}
+
+function renderStoresMobile() {
+  const q = document.getElementById('searchInputMobile').value.toLowerCase();
+  const filtered = stores.filter(s => {
+    const d = dist(s); if(d > searchRadius) return false;
+    if(catFilter !== 'all' && s.cat !== catFilter) return false;
+    if(q && !s.name.toLowerCase().includes(q) && !s.address.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b) => dist(a)-dist(b));
+
+  const badge = document.getElementById('countBadgeMobile');
+  if(badge) badge.textContent = filtered.length;
+
+  // Sync filter chips mobile
+  const cats = [...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
+  const frm = document.getElementById('filterRowMobile');
+  if(frm){
+    frm.innerHTML = `<button class="filter-chip ${catFilter==='all'?'active':''}" onclick="setCatFilter(this,'all')">Tous</button>`;
+    cats.forEach(c => {
+      frm.innerHTML += `<button class="filter-chip ${catFilter===c?'active':''}" onclick="setCatFilter(this,'${c.replace(/'/g,"\'")}');renderStoresMobile()">${c}</button>`;
+    });
+  }
+
+  const list = document.getElementById('storeListMobile');
+  if(!list) return;
+  if(!filtered.length){ list.innerHTML='<div class="no-stores"><div class="no-stores-icon">🏙️</div><h3>Aucun magasin</h3><p>Élargissez le rayon.</p></div>'; return; }
+
+  list.innerHTML = '';
+  filtered.forEach((s,i) => {
+    const div = document.createElement('div');
+    div.className = `store-card ${s.id===activeStoreId?'active':''}`;
+    div.style.animationDelay = `${i*.04}s`;
+    const avg = s.avgRating ? starsHtml(s.avgRating)+` <span style="font-size:.72rem;color:var(--muted)">(${s.reviewCount||0})</span>` : '';
+    div.innerHTML = `
+      <div class="card-top">
+        <div class="store-icon" style="background:${catBg(s.cat)}">${s.cat?s.cat.split(' ')[0]:''}</div>
+        <div class="card-info"><div class="card-name">${s.name}</div><div class="card-cat">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div></div>
+        <div class="card-dist">${distStr(s)}</div>
+      </div>
+      <div class="card-address">📍 ${s.address}</div>
+      <div class="card-footer">
+        <div class="open-badge"><div class="open-dot ${s.status}"></div><span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span></div>
+        <div class="stars-mini">${avg}</div>
+      </div>`;
+    div.onclick = () => { closeMobilePanel(); openStore(s); };
+    list.appendChild(div);
+  });
+}
+
+// ════════════════════════════════
+//  PWA — MANIFEST + SERVICE WORKER
+// ════════════════════════════════
+function setupPWA() {
+  // Manifest inline (évite un fichier séparé)
+  const manifest = {
+    name: "NearShop",
+    short_name: "NearShop",
+    description: "Trouvez les magasins autour de vous",
+    start_url: "./",
+    display: "standalone",
+    background_color: "#0d0f14",
+    theme_color: "#161921",
+    orientation: "portrait-primary",
+    icons: [
+      { src: "https://api.dicebear.com/7.x/shapes/svg?seed=nearshop&backgroundColor=f0c040&size=192", sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+      { src: "https://api.dicebear.com/7.x/shapes/svg?seed=nearshop&backgroundColor=f0c040&size=512", sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+    ],
+    shortcuts: [
+      { name: "Explorer", short_name: "Explorer", description: "Voir les magasins", url: "./?view=explore", icons: [{ src: "https://api.dicebear.com/7.x/shapes/svg?seed=nearshop&size=96", sizes: "96x96" }] }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  document.getElementById('pwaManifest').setAttribute('href', url);
+  document.getElementById('pwaManifest').setAttribute('rel', 'manifest');
+
+  // Service Worker (cache offline)
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+const CACHE = 'nearshop-v1';
+const ASSETS = ['./', './index.html'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});`;
+    const swBlob = new Blob([swCode], {type:'application/javascript'});
+    const swUrl  = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl, {scope:'./'}).catch(()=>{});
+  }
+
+  // Prompt installation (Android Chrome)
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallBanner(e);
+  });
+}
+
+function showInstallBanner(promptEvent) {
+  const banner = document.createElement('div');
+  banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:12px 18px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);font-family:'Syne',sans-serif;max-width:320px;width:calc(100% - 32px);animation:slideIn .3s ease`;
+  banner.innerHTML = `
+    <span style="font-size:1.6rem">📲</span>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:.88rem">Installer NearShop</div>
+      <div style="font-size:.75rem;color:var(--muted)">Accès rapide depuis votre écran d'accueil</div>
+    </div>
+    <button onclick="installPWA(this.closest('div[style]'), arguments[0]._prompt || window._pwaPrompt)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 13px;font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer">Installer</button>
+    <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem">✕</button>`;
+  window._pwaPrompt = promptEvent;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 12000);
+}
+
+async function installPWA(banner) {
+  if (!window._pwaPrompt) return;
+  window._pwaPrompt.prompt();
+  const { outcome } = await window._pwaPrompt.userChoice;
+  if (outcome === 'accepted') showToast('✅ NearShop installé !');
+  banner?.remove();
+  window._pwaPrompt = null;
+}
+
 window.addEventListener('load',()=>{
   initMap();
   applyLang();
   initPlacePicker();
+  setupPWA();
 
   // 📍 Localisation automatique dès l'ouverture
   locateUser(true);
