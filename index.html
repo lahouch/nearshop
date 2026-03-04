@@ -90,8 +90,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .mobile-nav-icon{font-size:1.3rem;}
 
 /* ── MOBILE PANEL (liste magasins) ── */
-.mobile-panel{display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--surface);border-radius:20px 20px 0 0;z-index:1500;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:75vh;overflow:hidden;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);}
-.mobile-panel.open{transform:translateY(0);}
+.mobile-panel{display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--surface);border-radius:20px 20px 0 0;z-index:1500;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:75vh;overflow:hidden;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);pointer-events:none;}
+.mobile-panel.open{transform:translateY(0);pointer-events:all;}
 .mobile-panel-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 6px;flex-shrink:0;cursor:pointer;}
 .mobile-panel-content{overflow-y:auto;flex:1;padding:0 12px 12px;}
 .mobile-panel-content::-webkit-scrollbar{display:none;}
@@ -1579,6 +1579,7 @@ function checkDeepLink(){
 //  MOBILE FUNCTIONS
 // ════════════════════════════════
 let mobilePanelOpen = false;
+let _panelTransitioning = false; // garde contre les doubles clics pendant transition
 
 function mobileNav(tab) {
   document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
@@ -1588,7 +1589,12 @@ function mobileNav(tab) {
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
   } else if (tab === 'list') {
     document.getElementById('mnavList').classList.add('active');
-    openMobilePanel();
+    // Si déjà ouvert → fermer, sinon ouvrir
+    if (mobilePanelOpen) {
+      closeMobilePanel();
+    } else {
+      openMobilePanel();
+    }
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
   } else if (tab === 'admin') {
     requireAdmin();
@@ -1596,20 +1602,27 @@ function mobileNav(tab) {
 }
 
 function openMobilePanel() {
-  document.getElementById('mobilePanel').classList.add('open');
+  if (_panelTransitioning) return;
+  _panelTransitioning = true;
+  const panel = document.getElementById('mobilePanel');
+  panel.classList.add('open');
   mobilePanelOpen = true;
   renderStoresMobile();
+  setTimeout(() => { _panelTransitioning = false; }, 400);
 }
 
 function closeMobilePanel() {
-  document.getElementById('mobilePanel').classList.remove('open');
+  if (_panelTransitioning) return;
+  _panelTransitioning = true;
+  const panel = document.getElementById('mobilePanel');
+  panel.classList.remove('open');
   mobilePanelOpen = false;
   document.getElementById('mnavExplore').classList.add('active');
   document.getElementById('mnavList').classList.remove('active');
+  setTimeout(() => { _panelTransitioning = false; }, 400);
 }
 
 function syncSearch(el) {
-  // Synchronise les deux barres de recherche (desktop + mobile)
   document.getElementById('searchInput').value = el.value;
   document.getElementById('searchInputMobile').value = el.value;
   renderStores();
@@ -1632,7 +1645,7 @@ function renderStoresMobile() {
   const cats = [...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
   const frm = document.getElementById('filterRowMobile');
   if(frm){
-    frm.innerHTML = `<button class="filter-chip ${catFilter==='all'?'active':''}" onclick="setCatFilter(this,'all')">Tous</button>`;
+    frm.innerHTML = `<button class="filter-chip ${catFilter==='all'?'active':''}" onclick="setCatFilter(this,'all');renderStoresMobile()">Tous</button>`;
     cats.forEach(c => {
       frm.innerHTML += `<button class="filter-chip ${catFilter===c?'active':''}" onclick="setCatFilter(this,'${c.replace(/'/g,"\'")}');renderStoresMobile()">${c}</button>`;
     });
@@ -1640,26 +1653,47 @@ function renderStoresMobile() {
 
   const list = document.getElementById('storeListMobile');
   if(!list) return;
-  if(!filtered.length){ list.innerHTML='<div class="no-stores"><div class="no-stores-icon">🏙️</div><h3>Aucun magasin</h3><p>Élargissez le rayon.</p></div>'; return; }
+  if(!filtered.length){
+    list.innerHTML='<div class="no-stores"><div class="no-stores-icon">🏙️</div><h3>Aucun magasin</h3><p>Élargissez le rayon.</p></div>';
+    return;
+  }
 
+  // Reconstruire la liste proprement avec addEventListener (pas onclick inline)
   list.innerHTML = '';
-  filtered.forEach((s,i) => {
+  filtered.forEach((s, i) => {
     const div = document.createElement('div');
     div.className = `store-card ${s.id===activeStoreId?'active':''}`;
     div.style.animationDelay = `${i*.04}s`;
-    const avg = s.avgRating ? starsHtml(s.avgRating)+` <span style="font-size:.72rem;color:var(--muted)">(${s.reviewCount||0})</span>` : '';
+    const avg = s.avgRating
+      ? starsHtml(s.avgRating)+` <span style="font-size:.72rem;color:var(--muted)">(${s.reviewCount||0})</span>`
+      : '';
     div.innerHTML = `
       <div class="card-top">
         <div class="store-icon" style="background:${catBg(s.cat)}">${s.cat?s.cat.split(' ')[0]:''}</div>
-        <div class="card-info"><div class="card-name">${s.name}</div><div class="card-cat">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div></div>
+        <div class="card-info">
+          <div class="card-name">${s.name}</div>
+          <div class="card-cat">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div>
+        </div>
         <div class="card-dist">${distStr(s)}</div>
       </div>
       <div class="card-address">📍 ${s.address}</div>
       <div class="card-footer">
-        <div class="open-badge"><div class="open-dot ${s.status}"></div><span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span></div>
+        <div class="open-badge">
+          <div class="open-dot ${s.status}"></div>
+          <span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span>
+        </div>
         <div class="stars-mini">${avg}</div>
       </div>`;
-    div.onclick = () => { closeMobilePanel(); openStore(s); };
+
+    // ✅ addEventListener au lieu de onclick inline → pas de conflit de re-rendu
+    const storeRef = {...s}; // capture propre de la référence
+    div.addEventListener('click', () => {
+      if(_panelTransitioning) return; // ignorer si en cours de transition
+      closeMobilePanel();
+      // Délai court pour laisser l'animation de fermeture démarrer
+      setTimeout(() => openStore(storeRef), 50);
+    }, { once: false });
+
     list.appendChild(div);
   });
 }
