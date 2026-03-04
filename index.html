@@ -266,7 +266,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .pac-matched{color:var(--accent)!important;}
 #adminPickerMap{width:100%;height:200px;border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden;}
 .fetched-info{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;display:none;}
-.fetched-row{display:flex;align-items:center;gap:8px;font-size:.83rem;margin-bottom:5px;color:var(--muted);}
+.fetched-row{display:flex;align-items:flex-start;gap:8px;font-size:.82rem;margin-bottom:6px;color:var(--muted);line-height:1.4;}
 .fetched-row strong{color:var(--text);}
 .fetched-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(61,255,160,.1);color:var(--green);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:700;}
 .stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;}
@@ -376,11 +376,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
         <!-- INFOS RÉCUPÉRÉES AUTOMATIQUEMENT -->
         <div class="fetched-info" id="fetchedInfo">
-          <div class="fetched-row">📍 <strong id="fi-address"></strong></div>
-          <div class="fetched-row">📞 <strong id="fi-phone"></strong></div>
-          <div class="fetched-row">🕐 <strong id="fi-hours"></strong></div>
-          <div class="fetched-row">📌 <strong id="fi-coords"></strong></div>
-          <div style="margin-top:6px"><span class="fetched-badge">✅ Infos récupérées depuis Google Maps</span></div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:10px;color:var(--text)">📥 Informations récupérées depuis Google Maps</div>
+          <div class="fetched-row" id="fi-row-name" style="display:none">🏪 <span style="color:var(--muted);min-width:80px">Nom</span><strong id="fi-name"></strong></div>
+          <div class="fetched-row" id="fi-row-address" style="display:none">📍 <span style="color:var(--muted);min-width:80px">Adresse</span><strong id="fi-address"></strong></div>
+          <div class="fetched-row" id="fi-row-phone" style="display:none">📞 <span style="color:var(--muted);min-width:80px">Téléphone</span><strong id="fi-phone"></strong></div>
+          <div class="fetched-row" id="fi-row-website" style="display:none">🌐 <span style="color:var(--muted);min-width:80px">Site web</span><strong id="fi-website"></strong></div>
+          <div class="fetched-row" id="fi-row-rating" style="display:none">⭐ <span style="color:var(--muted);min-width:80px">Note Google</span><strong id="fi-rating"></strong></div>
+          <div class="fetched-row" id="fi-row-hours" style="display:none">🕐 <span style="color:var(--muted);min-width:80px">Horaires</span><strong id="fi-hours"></strong></div>
+          <div class="fetched-row" id="fi-row-status" style="display:none">🟢 <span style="color:var(--muted);min-width:80px">Statut</span><strong id="fi-status"></strong></div>
+          <div class="fetched-row" id="fi-row-cat" style="display:none">🏷️ <span style="color:var(--muted);min-width:80px">Catégorie</span><strong id="fi-cat"></strong></div>
+          <div class="fetched-row" id="fi-row-coords" style="display:none">📌 <span style="color:var(--muted);min-width:80px">Coordonnées</span><strong id="fi-coords"></strong></div>
+          <div id="fi-hours-detail" style="display:none;background:var(--surface);border-radius:8px;padding:10px;margin-top:6px;font-size:.78rem;line-height:1.8;color:var(--muted)"></div>
+          <div style="margin-top:8px"><span class="fetched-badge">✅ Infos récupérées automatiquement</span></div>
         </div>
 
         <!-- CHAMPS (pré-remplis automatiquement, modifiables) -->
@@ -669,6 +676,33 @@ async function reverseGeocode(lat, lng) {
   } catch(e) {}
 }
 
+function fi(id, val, rowId) {
+  // Helper : affiche une ligne de l'info récap si val existe
+  if (val) {
+    document.getElementById(id).textContent = val;
+    if (rowId) document.getElementById(rowId).style.display = 'flex';
+  }
+}
+
+function guessCategory(types) {
+  if (!types) return '🏪 Autre';
+  const map = [
+    [['bakery'],                                          '🍞 Boulangerie'],
+    [['supermarket','grocery_or_supermarket','convenience_store'], '🛒 Supermarché'],
+    [['pharmacy','drugstore'],                            '💊 Pharmacie'],
+    [['clothing_store','department_store'],               '👗 Vêtements'],
+    [['restaurant','meal_takeaway','meal_delivery'],      '🍕 Restaurant'],
+    [['cafe','coffee_shop'],                              '☕ Café'],
+    [['hardware_store','home_goods_store'],               '🔧 Bricolage'],
+    [['book_store'],                                      '📚 Librairie'],
+    [['florist'],                                         '🌸 Fleuriste'],
+  ];
+  for (const [keywords, label] of map) {
+    if (types.some(t => keywords.includes(t))) return label;
+  }
+  return '🏪 Autre';
+}
+
 function initPlacePicker() {
   if (!window.google || !window.google.maps) {
     setTimeout(initPlacePicker, 500); return;
@@ -676,60 +710,99 @@ function initPlacePicker() {
   initAdminMap();
   const input = document.getElementById('placeSearch');
   if (!input) return;
-  const autocomplete = new google.maps.places.Autocomplete(input, { language: 'fr' });
+
+  // Demander TOUS les champs disponibles
+  const autocomplete = new google.maps.places.Autocomplete(input, {
+    language: 'fr',
+    fields: [
+      'place_id','name','formatted_address','geometry',
+      'formatted_phone_number','international_phone_number',
+      'opening_hours','current_opening_hours',
+      'business_status','website','rating','user_ratings_total',
+      'price_level','types','photos','icon','vicinity',
+      'address_components','adr_address','url'
+    ]
+  });
 
   autocomplete.addListener('place_changed', () => {
     const place = autocomplete.getPlace();
     if (!place.geometry) { showToast('⚠️ Lieu non trouvé'); return; }
 
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
-
-    // Remplir les champs automatiquement
-    document.getElementById('f-name').value = place.name || '';
-    document.getElementById('f-address').value = place.formatted_address || '';
-    document.getElementById('f-phone').value = place.formatted_phone_number || place.international_phone_number || '';
-
-    // Horaires
-    if (place.opening_hours && place.opening_hours.weekday_text) {
-      document.getElementById('f-hours').value = place.opening_hours.weekday_text.slice(0,3).join(' | ');
-    }
-
-    // Statut ouvert/fermé
-    if (place.opening_hours) {
-      document.getElementById('f-status').value = place.opening_hours.isOpen() ? 'open' : 'closed';
-    }
-
-    // Catégorie automatique selon les types Google
+    const lat  = place.geometry.location.lat();
+    const lng  = place.geometry.location.lng();
     const types = place.types || [];
-    let cat = '🏪 Autre';
-    if (types.some(t => ['bakery'].includes(t))) cat = '🍞 Boulangerie';
-    else if (types.some(t => ['supermarket','grocery_or_supermarket','convenience_store'].includes(t))) cat = '🛒 Supermarché';
-    else if (types.some(t => ['pharmacy','drugstore'].includes(t))) cat = '💊 Pharmacie';
-    else if (types.some(t => ['clothing_store'].includes(t))) cat = '👗 Vêtements';
-    else if (types.some(t => ['restaurant','food'].includes(t))) cat = '🍕 Restaurant';
-    else if (types.some(t => ['cafe'].includes(t))) cat = '☕ Café';
-    else if (types.some(t => ['hardware_store'].includes(t))) cat = '🔧 Bricolage';
-    else if (types.some(t => ['book_store'].includes(t))) cat = '📚 Librairie';
-    else if (types.some(t => ['florist'].includes(t))) cat = '🌸 Fleuriste';
+
+    // ── Remplir tous les champs du formulaire ──
+    if (place.name)                   document.getElementById('f-name').value    = place.name;
+    if (place.formatted_address)      document.getElementById('f-address').value = place.formatted_address;
+    if (place.formatted_phone_number) document.getElementById('f-phone').value   = place.formatted_phone_number;
+    else if (place.international_phone_number) document.getElementById('f-phone').value = place.international_phone_number;
+
+    // Horaires complets
+    const oh = place.opening_hours || place.current_opening_hours;
+    if (oh?.weekday_text?.length) {
+      document.getElementById('f-hours').value = oh.weekday_text.join(' | ');
+    }
+
+    // Statut
+    if (oh) {
+      try { document.getElementById('f-status').value = oh.isOpen() ? 'open' : 'closed'; } catch(e) {}
+    }
+    if (place.business_status === 'CLOSED_PERMANENTLY' || place.business_status === 'CLOSED_TEMPORARILY') {
+      document.getElementById('f-status').value = 'closed';
+    }
+
+    // Catégorie
+    const cat = guessCategory(types);
     document.getElementById('f-cat').value = cat;
 
-    // Coords
+    // Coordonnées
     document.getElementById('f-lat').value = lat.toFixed(6);
     document.getElementById('f-lng').value = lng.toFixed(6);
 
-    // Mini-map
+    // ── Mini-map ──
     adminPickerMap.setView([lat, lng], 17);
     placeAdminMarker(lat, lng);
 
-    // Afficher le récap
-    document.getElementById('fi-address').textContent = place.formatted_address || '–';
-    document.getElementById('fi-phone').textContent = place.formatted_phone_number || '–';
-    document.getElementById('fi-hours').textContent = place.opening_hours?.weekday_text?.[0] || '–';
-    document.getElementById('fi-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    // ── Récap visuel (masquer toutes les lignes d'abord) ──
+    document.querySelectorAll('[id^="fi-row-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('fi-hours-detail').style.display = 'none';
+
+    fi('fi-name',    place.name,               'fi-row-name');
+    fi('fi-address', place.formatted_address,   'fi-row-address');
+    fi('fi-phone',   place.formatted_phone_number || place.international_phone_number || '', 'fi-row-phone');
+    fi('fi-website', place.website ? `<a href="${place.website}" target="_blank" style="color:var(--accent)">${place.website.replace(/^https?:\/\//,'').split('/')[0]}</a>` : '', 'fi-row-website');
+    if (place.website) document.getElementById('fi-website').innerHTML = `<a href="${place.website}" target="_blank" style="color:var(--accent)">${place.website.replace(/^https?:\/\//,'').split('/')[0]}</a>`;
+
+    if (place.rating) {
+      fi('fi-rating', `${'★'.repeat(Math.round(place.rating))} ${place.rating}/5 (${place.user_ratings_total || 0} avis)`, 'fi-row-rating');
+    }
+
+    const statusText = place.business_status === 'OPERATIONAL' ? '🟢 Opérationnel'
+      : place.business_status === 'CLOSED_TEMPORARILY' ? '🟡 Fermé temporairement'
+      : place.business_status === 'CLOSED_PERMANENTLY' ? '🔴 Fermé définitivement'
+      : (oh ? (oh.isOpen?.() ? '🟢 Ouvert maintenant' : '🔴 Fermé maintenant') : '');
+    fi('fi-status', statusText, 'fi-row-status');
+    fi('fi-cat',    cat,        'fi-row-cat');
+    fi('fi-coords', `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'fi-row-coords');
+
+    // Horaires détaillés jour par jour
+    if (oh?.weekday_text?.length) {
+      fi('fi-hours', oh.weekday_text[new Date().getDay() === 0 ? 6 : new Date().getDay()-1], 'fi-row-hours');
+      const detail = document.getElementById('fi-hours-detail');
+      detail.innerHTML = '<strong style="color:var(--text);display:block;margin-bottom:4px">📅 Horaires complets</strong>' +
+        oh.weekday_text.map((h,i) => {
+          const isToday = (new Date().getDay() === 0 ? 6 : new Date().getDay()-1) === i;
+          return `<div style="${isToday?'color:var(--accent);font-weight:700':''}">${h}</div>`;
+        }).join('');
+      detail.style.display = 'block';
+    }
+
     document.getElementById('fetchedInfo').style.display = 'block';
 
-    showToast('✅ Infos récupérées depuis Google Maps !');
+    const count = [place.name, place.formatted_address, place.formatted_phone_number, oh, place.website, place.rating]
+      .filter(Boolean).length;
+    showToast(`✅ ${count} informations récupérées depuis Google Maps !`);
   });
 }
 
