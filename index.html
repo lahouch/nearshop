@@ -137,11 +137,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
   .mobile-panel{display:flex;}
 
   body{padding-bottom:0;}
-  .admin-view{padding:14px 12px 80px;}
-  .admin-grid{grid-template-columns:1fr !important;}
-  .admin-table-card{grid-column:span 1 !important;}
-  .admin-table{font-size:.8rem;}
-  .admin-table th{font-size:.7rem;}
+  /* ── ADMIN MOBILE ── */
+  .admin-view{padding:10px 12px 110px !important;overflow-y:auto;}
+  .admin-title{font-size:1.15rem !important;margin-bottom:2px;}
+  .admin-subtitle{font-size:.8rem;margin-bottom:14px;}
+  .admin-grid{grid-template-columns:1fr !important;gap:12px;}
+  .admin-form-card{padding:16px !important;border-radius:14px !important;}
+  .admin-form-card:nth-child(2){display:none !important;} /* cache carte stats sur mobile */
+  .admin-table-card{grid-column:span 1 !important;padding:14px !important;border-radius:14px !important;}
+  .admin-form-title{font-size:.88rem;margin-bottom:12px;}
+  .form-group{margin-bottom:10px;}
+  .form-label{font-size:.7rem;}
+  .form-input,.form-select,.form-textarea{padding:9px 11px;font-size:.85rem;border-radius:8px;}
+  .form-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .form-submit{padding:13px;font-size:.88rem;border-radius:10px;}
+  .form-cancel{padding:11px;font-size:.85rem;}
+  #adminPickerMap{height:160px !important;border-radius:10px;}
+  .place-search-input{font-size:.88rem;padding:10px 12px 10px 38px;}
+  .photo-upload{padding:12px;}
+  .fetched-info{padding:10px;}
+  .fetched-row{font-size:.78rem;}
+  /* TABLE mobile → cards style */
+  .admin-table thead{display:none;}
+  .admin-table tbody tr{display:flex;flex-direction:column;background:var(--surface2);border-radius:12px;margin-bottom:10px;padding:12px;border-bottom:none !important;}
+  .admin-table tbody tr:hover td{background:transparent;}
+  .admin-table td{padding:3px 0 !important;border-bottom:none !important;font-size:.82rem;display:flex;align-items:center;gap:8px;}
+  .admin-table td:first-child{font-size:1.4rem;}
+  .tbl-btn{padding:7px 14px;font-size:.78rem;}
+  .admin-form-title span{font-size:.88rem;}
 
   .modal{border-radius:20px 20px 0 0;max-height:92vh;position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;}
   .modal-overlay{align-items:flex-end;padding:0;}
@@ -278,9 +301,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .review-submit:hover{filter:brightness(1.1);}
 
 /* ── ADMIN ── */
-.admin-view{flex:1;overflow-y:auto;padding:24px;display:none;}
+.admin-view{flex:1;overflow-y:auto;padding:24px;display:none;-webkit-overflow-scrolling:touch;}
 .admin-view.visible{display:block;}
-.admin-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;margin-bottom:4px;}
+.admin-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;margin-bottom:4px;line-height:1.2;}
 .admin-subtitle{color:var(--muted);font-size:.88rem;margin-bottom:24px;}
 .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .admin-form-card{background:var(--surface);border-radius:18px;padding:22px;border:1px solid var(--border);}
@@ -500,7 +523,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 <!-- ══ ADMIN VIEW ══ -->
 <div class="app-body admin-view" id="adminView">
   <div style="max-width:1100px;margin:0 auto;width:100%;">
-    <div class="admin-title">⚙️ <span data-i18n="storeManagement">Gestion des magasins</span></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div class="admin-title">⚙️ <span data-i18n="storeManagement">Gestion des magasins</span></div>
+    </div>
     <div class="admin-subtitle" data-i18n="adminSubtitle">Ajoutez, modifiez ou supprimez les magasins.</div>
 
     <div class="admin-grid">
