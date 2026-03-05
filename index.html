@@ -1189,7 +1189,7 @@ function initPlacePicker() {
 function updateUserMarker(lat, lng) {
   if (userMarker) { map.removeLayer(userMarker); map.removeLayer(radiusCircle); }
   userMarker = L.marker([lat, lng], { icon: L.divIcon({
-    html: `<div style="width:16px;height:16px;background:#f0c040;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(240,192,64,.8)"></div>`,
+    html: `<div style="width:16px;height:16px;background:#e53935;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(229,57,53,.8)"></div>`,
     className:'', iconSize:[16,16], iconAnchor:[8,8]
   })}).addTo(map);
   radiusCircle = L.circle([lat, lng], { radius:searchRadius*1000, color:'#f0c040', fillColor:'#f0c040', fillOpacity:.05, weight:1, dashArray:'6,6' }).addTo(map);
