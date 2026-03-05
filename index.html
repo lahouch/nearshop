@@ -213,6 +213,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .city-or{text-align:center;color:var(--muted);font-size:.78rem;margin:10px 0;}
 .city-map-hint{background:var(--bg);border:1px dashed var(--border);border-radius:12px;padding:12px;text-align:center;font-size:.82rem;color:var(--muted);cursor:pointer;transition:all .2s;}
 .city-map-hint:hover{border-color:var(--accent);color:var(--accent);}
+/* Mini-menu localisation */
+.locate-menu{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:4px;min-width:200px;}
+.locate-menu.hidden{display:none;}
+.locate-menu-item{padding:11px 16px;border:none;background:transparent;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;font-size:.85rem;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;transition:background .15s;-webkit-tap-highlight-color:transparent;}
+.locate-menu-item:hover,.locate-menu-item:active{background:var(--surface2);}
 
 /* ── LAYOUT ── */
 .app-body{display:flex;flex:1;overflow:hidden;}
@@ -567,19 +572,31 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     <span class="mobile-nav-icon">📋</span>
     <span>Magasins</span>
   </button>
-  <button class="mobile-nav-btn" id="mnavLocate" onclick="locateUser(false)">
+  <!-- Bouton localisation avec mini-menu -->
+  <button class="mobile-nav-btn" id="mnavLocate" onclick="toggleLocateMenu()">
     <span class="mobile-nav-icon">📍</span>
-    <span>Ma position</span>
+    <span>Localiser</span>
   </button>
-  <button class="mobile-nav-btn" id="mnavCity" onclick="openCitySearch()">
-    <span class="mobile-nav-icon">🔍</span>
-    <span>Ville</span>
+  <!-- Bouton connexion utilisateur -->
+  <button class="mobile-nav-btn" id="mnavUser" onclick="mobileNav('user')">
+    <span class="mobile-nav-icon" id="mnavUserIcon">👤</span>
+    <span id="mnavUserLabel">Connexion</span>
   </button>
   <button class="mobile-nav-btn" id="mnavAdmin" onclick="requireAdmin()">
     <span class="mobile-nav-icon">⚙️</span>
     <span>Admin</span>
   </button>
 </nav>
+
+<!-- Mini-menu localisation -->
+<div class="locate-menu hidden" id="locateMenu">
+  <button class="locate-menu-item" onclick="locateUser(false);closeLocateMenu()">
+    <span>📍</span> Ma position GPS
+  </button>
+  <button class="locate-menu-item" onclick="openCitySearch();closeLocateMenu()">
+    <span>🔍</span> Chercher une ville
+  </button>
+</div>
 
 <!-- ══ MOBILE PANEL (liste magasins) ══ -->
 <div class="mobile-panel" id="mobilePanel">
@@ -1724,6 +1741,21 @@ function updateUserUI(user){
     avatarBtn.style.display = 'none';
     closeUserMenu();
   }
+  // Mettre à jour le bouton nav mobile
+  const mnavUserIcon  = document.getElementById('mnavUserIcon');
+  const mnavUserLabel = document.getElementById('mnavUserLabel');
+  if (mnavUserIcon && mnavUserLabel) {
+    if (user) {
+      const initials = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+      mnavUserIcon.textContent  = initials;
+      mnavUserIcon.style.cssText = 'width:24px;height:24px;border-radius:50%;background:' + (isAdmin ? '#f0c040' : '#3dffa0') + ';color:#000;font-weight:800;font-size:.75rem;display:flex;align-items:center;justify-content:center;';
+      mnavUserLabel.textContent = isAdmin ? 'Admin ★' : (user.displayName || 'Mon compte').split(' ')[0];
+    } else {
+      mnavUserIcon.textContent   = '👤';
+      mnavUserIcon.style.cssText = '';
+      mnavUserLabel.textContent  = 'Connexion';
+    }
+  }
 }
 
 function toggleUserMenu(){
@@ -2006,17 +2038,41 @@ let _panelTransitioning = false; // garde contre les doubles clics pendant trans
 
 function mobileNav(tab) {
   document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  closeLocateMenu();
   if (tab === 'explore') {
     document.getElementById('mnavExplore').classList.add('active');
     closeMobilePanel();
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
   } else if (tab === 'list') {
     document.getElementById('mnavList').classList.add('active');
-    // Toujours ouvrir — la ✕ sert à fermer
     if (!mobilePanelOpen) openMobilePanel();
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
+  } else if (tab === 'user') {
+    // Connexion ou menu compte
+    openUserAuth();
   } else if (tab === 'admin') {
     requireAdmin();
+  }
+}
+
+function toggleLocateMenu() {
+  const menu = document.getElementById('locateMenu');
+  menu.classList.toggle('hidden');
+  // Fermer si clic ailleurs
+  if (!menu.classList.contains('hidden')) {
+    setTimeout(() => {
+      document.addEventListener('click', closeLocateMenuOutside, { once: true });
+    }, 50);
+  }
+}
+function closeLocateMenu() {
+  document.getElementById('locateMenu')?.classList.add('hidden');
+}
+function closeLocateMenuOutside(e) {
+  const menu = document.getElementById('locateMenu');
+  const btn  = document.getElementById('mnavLocate');
+  if (menu && !menu.contains(e.target) && !btn?.contains(e.target)) {
+    closeLocateMenu();
   }
 }
 
