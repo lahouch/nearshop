@@ -8,8 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NearShop">
-<meta name="application-name" content="NearShop">
+<meta name="apple-mobile-web-app-title" content="NearShop Drive">
+<meta name="application-name" content="NearShop Drive">
 <meta name="theme-color" content="#161921">
 <meta name="description" content="Trouvez les magasins autour de vous">
 <meta name="msapplication-TileColor" content="#f0c040">
@@ -17,7 +17,7 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Apple touch icons (inline via JS) -->
-<title>NearShop</title>
+<title>NearShop Drive</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -417,7 +417,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 <!-- ══ ADMIN AUTH WALL ══ -->
 <div class="auth-wall hidden" id="authWall">
   <div class="auth-box">
-    <div class="auth-logo">Near<span>Shop</span></div>
+    <div class="auth-logo">Near<span>Shop Drive</span></div>
     <div class="auth-sub">🔐 Connexion administrateur</div>
     <div class="auth-error" id="authError"></div>
     <div class="form-group">
@@ -501,7 +501,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
 <!-- ══ HEADER ══ -->
 <header>
-  <div class="logo"><div class="logo-dot"></div>Near<span>Shop</span></div>
+  <div class="logo"><div class="logo-dot"></div>Near<span>Shop Drive</span></div>
 
   <div class="nav-tabs">
     <button class="nav-tab active" id="tabExplore" onclick="switchView('user')">🗺️ <span data-i18n="explore">Explorer</span></button>
@@ -1829,7 +1829,7 @@ function showPermissionHelp(){
     </div>
     <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
       <strong style="color:var(--text)">Sur Android :</strong><br>
-      Appui long sur l'icône NearShop →<br>
+      Appui long sur l'icône NearShop Drive →<br>
       <strong style="color:var(--accent)">Infos app → Autorisations → Localisation → Autoriser</strong>
     </div>
     <div style="display:flex;gap:8px">
@@ -2037,7 +2037,7 @@ function showIOSHint() {
   hint.style.cssText = `position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px 18px;z-index:9999;font-family:'Syne',sans-serif;max-width:300px;width:calc(100% - 32px);text-align:center;box-shadow:var(--shadow)`;
   hint.innerHTML = `
     <div style="font-size:1.5rem;margin-bottom:8px">📲</div>
-    <div style="font-weight:700;font-size:.88rem;margin-bottom:5px">Installer NearShop</div>
+    <div style="font-weight:700;font-size:.88rem;margin-bottom:5px">Installer NearShop Drive</div>
     <div style="font-size:.78rem;color:var(--muted);line-height:1.5">Appuyez sur <strong style="color:var(--text)">□↑</strong> puis <strong style="color:var(--text)">'Sur l'écran d'accueil"</strong></div>
     <button onclick='this.closest('div').remove()" style='margin-top:10px;background:var(--surface2);border:none;border-radius:8px;padding:6px 16px;color:var(--muted);font-family:'Syne',sans-serif;cursor:pointer;font-size:.78rem">Fermer</button>`;
   document.body.appendChild(hint);
@@ -2062,7 +2062,7 @@ function showInstallBanner(promptEvent) {
 
   const text = document.createElement('div');
   text.style.flex = '1';
-  text.innerHTML = '<div style="font-weight:700;font-size:.88rem">Installer NearShop</div>'
+  text.innerHTML = '<div style="font-weight:700;font-size:.88rem">Installer NearShop Drive</div>'
     + "<div style='font-size:.75rem;color:var(--muted)'>Accès rapide depuis votre écran d'accueil</div>";
 
   const btnInstall = document.createElement('button');
@@ -2095,7 +2095,7 @@ async function installPWA(banner) {
     prompt.prompt();
     const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') {
-      showToast('✅ NearShop installé !');
+      showToast('✅ NearShop Drive installé !');
     } else {
       showToast('Installation annulée');
     }
