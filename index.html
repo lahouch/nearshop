@@ -199,6 +199,20 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .lang-btn:hover{border-color:var(--accent);color:var(--accent);}
 .locate-btn{display:flex;align-items:center;gap:7px;padding:0 16px;height:36px;background:var(--accent2);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
 .locate-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
+.city-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:8000;display:flex;align-items:flex-end;justify-content:center;}
+.city-modal.hidden{display:none;}
+.city-box{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 36px;width:100%;max-width:500px;border-top:1px solid var(--border);}
+.city-search-wrap{position:relative;margin-bottom:12px;}
+.city-input{width:100%;padding:12px 16px 12px 42px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Syne',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box;}
+.city-input:focus{border-color:var(--accent);}
+.city-input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none;}
+.city-results{list-style:none;padding:0;margin:0;max-height:220px;overflow-y:auto;}
+.city-result-item{padding:11px 14px;border-radius:10px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:10px;transition:background .15s;}
+.city-result-item:hover,.city-result-item:active{background:var(--surface2);}
+.city-result-icon{font-size:1.1rem;flex-shrink:0;}
+.city-or{text-align:center;color:var(--muted);font-size:.78rem;margin:10px 0;}
+.city-map-hint{background:var(--bg);border:1px dashed var(--border);border-radius:12px;padding:12px;text-align:center;font-size:.82rem;color:var(--muted);cursor:pointer;transition:all .2s;}
+.city-map-hint:hover{border-color:var(--accent);color:var(--accent);}
 
 /* ── LAYOUT ── */
 .app-body{display:flex;flex:1;overflow:hidden;}
@@ -434,6 +448,25 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   </div>
 </div>
 
+<!-- ══ CITY SEARCH MODAL ══ -->
+<div class="city-modal hidden" id="cityModal">
+  <div class="city-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem">🗺️ Choisir une ville</div>
+      <button onclick="closeCitySearch()" style="background:var(--surface2);border:none;border-radius:50%;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
+    </div>
+    <div class="city-search-wrap">
+      <span class="city-input-icon">🔍</span>
+      <input class="city-input" id="cityInput" type="text" placeholder="Paris, Liège, Bruxelles..." autocomplete="off" oninput="searchCity(this.value)">
+    </div>
+    <ul class="city-results" id="cityResults"></ul>
+    <div class="city-or">— ou —</div>
+    <div class="city-map-hint" onclick="enableMapClick()">
+      📌 Cliquer sur la carte pour choisir un endroit
+    </div>
+  </div>
+</div>
+
 <!-- ══ USER AUTH MODAL ══ -->
 <div class="user-auth-modal hidden" id="userAuthModal">
   <div class="user-auth-box">
@@ -515,6 +548,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       <span data-i18n="locate">Me localiser</span>
     </button>
+    <button class="locate-btn" onclick="openCitySearch()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);" title="Chercher une ville">
+      🔍 <span>Autre ville</span>
+    </button>
     <!-- Utilisateur connecté : avatar / bouton compte -->
     <div id="userAvatarBtn" style="display:none" onclick="toggleUserMenu()"></div>
     <button class="icon-btn" id="loginBtn" onclick="openUserAuth()" title="Se connecter" style="font-size:.75rem;padding:0 10px;width:auto;gap:4px">👤 <span style='font-family:'Syne',sans-serif;font-weight:700">Connexion</span></button>
@@ -533,7 +569,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   </button>
   <button class="mobile-nav-btn" id="mnavLocate" onclick="locateUser(false)">
     <span class="mobile-nav-icon">📍</span>
-    <span>Me situer</span>
+    <span>Ma position</span>
+  </button>
+  <button class="mobile-nav-btn" id="mnavCity" onclick="openCitySearch()">
+    <span class="mobile-nav-icon">🔍</span>
+    <span>Ville</span>
   </button>
   <button class="mobile-nav-btn" id="mnavAdmin" onclick="requireAdmin()">
     <span class="mobile-nav-icon">⚙️</span>
@@ -1703,6 +1743,102 @@ document.addEventListener('click', e => {
     }
   } catch(e) {}
 });
+
+// ════════════════════════════════
+//  RECHERCHE DE VILLE
+// ════════════════════════════════
+let _citySearchTimer = null;
+let _mapClickMode = false;
+
+function openCitySearch() {
+  document.getElementById('cityModal').classList.remove('hidden');
+  document.getElementById('cityInput').value = '';
+  document.getElementById('cityResults').innerHTML = '';
+  setTimeout(() => document.getElementById('cityInput').focus(), 200);
+}
+
+function closeCitySearch() {
+  document.getElementById('cityModal').classList.add('hidden');
+  disableMapClick();
+}
+
+function searchCity(query) {
+  clearTimeout(_citySearchTimer);
+  const results = document.getElementById('cityResults');
+  if (!query || query.length < 2) { results.innerHTML = ''; return; }
+
+  results.innerHTML = '<li style="padding:10px 14px;color:var(--muted);font-size:.82rem">Recherche...</li>';
+
+  _citySearchTimer = setTimeout(() => {
+    // Utiliser Nominatim (OpenStreetMap) — gratuit, pas de clé API
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&q=' + encodeURIComponent(query) + '&accept-language=fr';
+    fetch(url, { headers: { 'Accept-Language': 'fr' } })
+      .then(r => r.json())
+      .then(data => {
+        results.innerHTML = '';
+        if (!data.length) {
+          results.innerHTML = '<li style="padding:10px 14px;color:var(--muted);font-size:.82rem">Aucun résultat</li>';
+          return;
+        }
+        data.forEach(place => {
+          const li = document.createElement('li');
+          li.className = 'city-result-item';
+          const icon = place.type === 'city' || place.type === 'town' ? '🏙️'
+            : place.type === 'village' ? '🏘️'
+            : place.type === 'administrative' ? '📍'
+            : '📌';
+          // Nom court : avant la première virgule
+          const shortName = place.display_name.split(',').slice(0, 2).join(',');
+          li.innerHTML = '<span class="city-result-icon">' + icon + '</span>'
+            + '<div><div style="font-weight:600;font-size:.87rem">' + shortName + '</div>'
+            + '<div style="font-size:.73rem;color:var(--muted)">' + (place.display_name.split(',').slice(2, 4).join(',').trim() || '') + '</div></div>';
+          li.addEventListener('click', () => {
+            moveToCity(parseFloat(place.lat), parseFloat(place.lon), place.display_name.split(',')[0]);
+          });
+          results.appendChild(li);
+        });
+      })
+      .catch(() => {
+        results.innerHTML = '<li style="padding:10px 14px;color:var(--muted);font-size:.82rem">Erreur de recherche</li>';
+      });
+  }, 400);
+}
+
+function moveToCity(lat, lng, name) {
+  // Déplacer le centre de recherche sans changer la position GPS réelle
+  userLat = lat;
+  userLng = lng;
+  map.setView([lat, lng], 14);
+  updateUserMarker(lat, lng);
+  renderStores();
+  closeCitySearch();
+  showToast('📍 Zone : ' + name);
+}
+
+function enableMapClick() {
+  closeCitySearch();
+  _mapClickMode = true;
+  showToast('👆 Cliquez sur la carte pour choisir un endroit');
+  map.getContainer().style.cursor = 'crosshair';
+  map.once('click', function(e) {
+    disableMapClick();
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    // Reverse geocode pour avoir le nom
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=fr')
+      .then(r => r.json())
+      .then(data => {
+        const name = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb || 'Position choisie';
+        moveToCity(lat, lng, name);
+      })
+      .catch(() => moveToCity(lat, lng, 'Position choisie'));
+  });
+}
+
+function disableMapClick() {
+  _mapClickMode = false;
+  if (map) map.getContainer().style.cursor = '';
+}
 
 async function doLogout(){
   await fb.signOut(fb.auth);
