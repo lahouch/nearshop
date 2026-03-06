@@ -234,6 +234,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .search-box input::placeholder{color:var(--muted);}
 .filter-row{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
 .filter-chip{padding:4px 11px;border-radius:20px;font-size:.75rem;font-weight:500;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;}
+.fav-btn{position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px;line-height:1;transition:transform .2s;z-index:2;-webkit-tap-highlight-color:transparent;}
+.fav-btn:active{transform:scale(1.3);}
+.store-card{position:relative;}
 .filter-chip.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
 .filter-chip:hover:not(.active){border-color:var(--muted);color:var(--text);}
 
@@ -913,6 +916,34 @@ let map, userMarker, radiusCircle;
 let mapMarkers = [];
 let userLat = 50.8503, userLng = 4.3517;
 let catFilter = 'all';
+let favFilter = false; // filtre "Mes favoris"
+
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem('nearshop_favs') || '[]'); }
+  catch(e) { return []; }
+}
+function isFav(id) { return getFavs().includes(id); }
+function toggleFav(id, e) {
+  if(e){ e.stopPropagation(); e.preventDefault(); }
+  if(!currentUser){ openUserAuth(); showToast('👤 Connectez-vous pour sauvegarder des favoris'); return; }
+  const favs = getFavs();
+  const idx  = favs.indexOf(id);
+  if(idx === -1){
+    favs.push(id);
+    showToast('❤️ Ajouté aux favoris !');
+  } else {
+    favs.splice(idx, 1);
+    showToast('💔 Retiré des favoris');
+  }
+  localStorage.setItem('nearshop_favs', JSON.stringify(favs));
+  renderStores();
+  if(mobilePanelOpen) renderStoresMobile();
+}
+function toggleFavFilter() {
+  favFilter = !favFilter;
+  renderStores();
+  if(mobilePanelOpen) renderStoresMobile();
+}
 let searchRadius = 5; // km — modifiable par l'utilisateur
 let activeStoreId = null;
 let currentRating = 0;
@@ -1302,6 +1333,7 @@ function renderStores() {
   const filtered = stores.filter(s => {
     const d=dist(s); if(d>searchRadius)return false;
     if(catFilter!=='all'&&s.cat!==catFilter)return false;
+    if(favFilter && !isFav(s.id))return false;
     if(q&&!s.name.toLowerCase().includes(q)&&!s.address.toLowerCase().includes(q)&&!s.cat.toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>dist(a)-dist(b));
@@ -1313,8 +1345,12 @@ function renderStores() {
   const cats=[...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
   const fr=document.getElementById('filterRow');
   if(fr){
-    fr.innerHTML='<button class="filter-chip '+(catFilter==='all'?'active':'')+' " onclick="setCatFilter(this,\'all\')" >Tous</button>';
-    cats.forEach(c=>{const sc=c.replace(/'/g,'\\\'');fr.innerHTML+='<button class="filter-chip '+(catFilter===c?'active':'')+' " onclick="setCatFilter(this,\''+sc+'\')" >'+c+'</button>';});
+    const favs=getFavs();
+    fr.innerHTML='<button class="filter-chip '+(catFilter==='all'&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\'all\')" >Tous</button>';
+    if(favs.length>0||currentUser){
+      fr.innerHTML+='<button class="filter-chip '+(favFilter?'active':'')+' " onclick="toggleFavFilter()" style="'+(favFilter?'':'border-color:#e53935;color:#e53935;')+'">❤️ Favoris'+(favs.length?` (${favs.length})`:'')+'</button>';
+    }
+    cats.forEach(c=>{const sc=c.replace(/'/g,'\\\'');fr.innerHTML+='<button class="filter-chip '+(catFilter===c&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\''+sc+'\')" >'+c+'</button>';});
   }
 
   const list=document.getElementById('storeList');
@@ -1341,6 +1377,14 @@ function renderStores() {
         <div class="open-badge"><div class="open-dot ${s.status}"></div><span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span></div>
         <div class="stars-mini">${avg}</div>
       </div>`;
+    // Bouton favori
+    const favBtn = document.createElement('button');
+    favBtn.className = 'fav-btn';
+    favBtn.title = isFav(s.id) ? 'Retirer des favoris' : 'Ajouter aux favoris';
+    favBtn.innerHTML = isFav(s.id) ? '❤️' : '🤍';
+    favBtn.onclick = (e) => toggleFav(s.id, e);
+    div.appendChild(favBtn);
+
     div.onclick=()=>openStore(s);
     list.appendChild(div);
 
@@ -1927,7 +1971,7 @@ function switchView(v){
   if(v==='admin') { setTimeout(()=>{ initAdminMap(); if(adminPickerMap) adminPickerMap.invalidateSize(); }, 100); }
 }
 
-function setCatFilter(el,cat){catFilter=cat;renderStores();}
+function setCatFilter(el,cat){catFilter=cat;favFilter=false;renderStores();}
 
 function setRadius(km) {
   searchRadius = km;
@@ -2149,6 +2193,7 @@ function renderStoresMobile() {
   const filtered = stores.filter(s => {
     const d = dist(s); if(d > searchRadius) return false;
     if(catFilter !== 'all' && s.cat !== catFilter) return false;
+    if(favFilter && !isFav(s.id)) return false;
     if(q && !s.name.toLowerCase().includes(q) && !s.address.toLowerCase().includes(q)) return false;
     return true;
   }).sort((a,b) => dist(a)-dist(b));
@@ -2160,9 +2205,13 @@ function renderStoresMobile() {
   const cats = [...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
   const frm = document.getElementById('filterRowMobile');
   if(frm){
-    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
+    const mfavs=getFavs();
+    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
+    if(mfavs.length>0||currentUser){ frm.innerHTML+='<button class="filter-chip '+(favFilter?'active':'')+' " onclick="toggleFavFilter()" style="'+(favFilter?'':'border-color:#e53935;color:#e53935;')+'">❤️ Favoris'+(mfavs.length?` (${mfavs.length})`:'')+'</button>'; }
     cats.forEach(c => {
-    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
+    const mfavs=getFavs();
+    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
+    if(mfavs.length>0||currentUser){ frm.innerHTML+='<button class="filter-chip '+(favFilter?'active':'')+' " onclick="toggleFavFilter()" style="'+(favFilter?'':'border-color:#e53935;color:#e53935;')+'">❤️ Favoris'+(mfavs.length?` (${mfavs.length})`:'')+'</button>'; }
     });
   }
 
