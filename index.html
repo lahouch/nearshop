@@ -201,7 +201,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .locate-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
 .city-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:8000;display:flex;align-items:flex-end;justify-content:center;}
 .city-modal.hidden{display:none;}
-.city-box{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 36px;width:100%;max-width:500px;border-top:1px solid var(--border);}
+.city-box{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 0;width:100%;max-width:500px;border-top:1px solid var(--border);display:flex;flex-direction:column;max-height:85vh;}
+.city-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(100px + env(safe-area-inset-bottom));flex:1;}
 .city-search-wrap{position:relative;margin-bottom:12px;}
 .city-input{width:100%;padding:12px 16px 12px 42px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Syne',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box;}
 .city-input:focus{border-color:var(--accent);}
@@ -234,9 +235,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .search-box input::placeholder{color:var(--muted);}
 .filter-row{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
 .filter-chip{padding:4px 11px;border-radius:20px;font-size:.75rem;font-weight:500;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;}
-.fav-btn{position:absolute;top:10px;right:10px;background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px;line-height:1;transition:transform .2s;z-index:2;-webkit-tap-highlight-color:transparent;}
-.fav-btn:active{transform:scale(1.3);}
-.store-card{position:relative;}
+.fav-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:2px 4px;line-height:1;transition:transform .2s;-webkit-tap-highlight-color:transparent;margin-left:auto;flex-shrink:0;}
+.fav-btn:active{transform:scale(1.4);}
 .filter-chip.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
 .filter-chip:hover:not(.active){border-color:var(--muted);color:var(--text);}
 
@@ -487,10 +487,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       <span class="city-input-icon">🔍</span>
       <input class="city-input" id="cityInput" type="text" placeholder="Paris, Liège, Bruxelles..." autocomplete="off" oninput="searchCity(this.value)">
     </div>
-    <ul class="city-results" id="cityResults"></ul>
-    <div class="city-or">— ou —</div>
-    <div class="city-map-hint" onclick="enableMapClick()">
-      📌 Cliquer sur la carte pour choisir un endroit
+    <div class="city-scroll">
+      <ul class="city-results" id="cityResults"></ul>
+      <div class="city-or">— ou —</div>
+      <div class="city-map-hint" onclick="enableMapClick()">
+        📌 Cliquer sur la carte pour choisir un endroit
+      </div>
     </div>
   </div>
 </div>
@@ -1377,13 +1379,15 @@ function renderStores() {
         <div class="open-badge"><div class="open-dot ${s.status}"></div><span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span></div>
         <div class="stars-mini">${avg}</div>
       </div>`;
-    // Bouton favori
+    // Bouton favori dans le card-footer
     const favBtn = document.createElement('button');
     favBtn.className = 'fav-btn';
     favBtn.title = isFav(s.id) ? 'Retirer des favoris' : 'Ajouter aux favoris';
     favBtn.innerHTML = isFav(s.id) ? '❤️' : '🤍';
     favBtn.onclick = (e) => toggleFav(s.id, e);
-    div.appendChild(favBtn);
+    const footer = div.querySelector('.card-footer');
+    if(footer) footer.appendChild(favBtn);
+    else div.appendChild(favBtn);
 
     div.onclick=()=>openStore(s);
     list.appendChild(div);
@@ -2267,8 +2271,8 @@ function renderStoresMobile() {
     mfavBtn.className = "fav-btn";
     mfavBtn.innerHTML = isFav(s.id) ? "❤️" : "🤍";
     mfavBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleFav(s.id, e); });
-    div.appendChild(mfavBtn);
-    const storeRef = {...s}; // capture propre de la référence
+    const mfooter = div.querySelector(".card-footer");
+    if(mfooter) mfooter.appendChild(mfavBtn); else div.appendChild(mfavBtn);
     div.addEventListener('click', () => {
       if(_panelTransitioning) return; // ignorer si en cours de transition
       closeMobilePanel();
