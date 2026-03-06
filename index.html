@@ -1874,21 +1874,23 @@ async function loginUserGoogle(){
 async function saveUserToFirestore(user, method){
   try{
     const ref = window._fb.db.collection('users').doc(user.uid);
-    const snap = await ref.get();
-    if(!snap.exists){
-      const data = {
-        uid: user.uid,
-        displayName: user.displayName || '',
-        email: user.email,
-        method: method,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        photoURL: user.photoURL || ''
-      };
-      await ref.set(data);
-      // Sync Google Sheet si configuré
-      if(window.GSHEET_URL) sendToGoogleSheet(data);
-    }
-  }catch(e){ console.warn('saveUser:', e); }
+    // Ne pas faire ref.get() — l'utilisateur n'a pas droit de lire
+    // set() avec merge évite d'écraser si le doc existe déjà
+    const data = {
+      uid:         user.uid,
+      displayName: user.displayName || '',
+      email:       user.email,
+      method:      method,
+      createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      photoURL:    user.photoURL || ''
+    };
+    await ref.set(data, { merge: true });
+    console.log('✅ User saved to Firestore:', user.email);
+    // Sync Google Sheet si configuré
+    if(window.GSHEET_URL) sendToGoogleSheet(data);
+  }catch(e){
+    console.error('saveUser error:', e.code, e.message);
+  }
 }
 
 function switchAdminTab(tab){
