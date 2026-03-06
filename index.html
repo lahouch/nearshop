@@ -422,7 +422,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .no-stores{padding:36px 18px;text-align:center;color:var(--muted);}
 .no-stores-icon{font-size:2.3rem;margin-bottom:10px;}
 .no-stores h3{font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px;color:var(--text);}
-.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;padding:9px 20px;border-radius:30px;z-index:9000;opacity:0;transition:all .3s;}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;padding:9px 20px;border-radius:30px;z-index:10001;opacity:0;transition:all .3s;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .user-view.hidden{display:none!important;}
 .loading{display:flex;align-items:center;justify-content:center;padding:32px;color:var(--muted);font-size:.85rem;gap:8px;}
@@ -450,6 +450,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     <button class="form-submit" onclick="loginAdmin()">🔐 Accéder à l'administration</button>
     <button class="form-cancel" onclick="document.getElementById('authWall').classList.add('hidden')" style="margin-top:8px">Annuler</button>
     <div class="auth-note" style="margin-top:14px">⚠️ Accès réservé à l'administrateur uniquement.</div>
+  </div>
+</div>
+
+<!-- ══ MOBILE USER MENU ══ -->
+<div class="city-modal hidden" id="mobileUserMenu">
+  <div class="city-box" style="padding-bottom:40px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem" id="mobileMenuName">Mon compte</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:2px" id="mobileMenuEmail"></div>
+      </div>
+      <button onclick="closeMobileUserMenu()" style="background:var(--surface2);border:none;border-radius:50%;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
+    </div>
+    <button onclick="doLogout();closeMobileUserMenu()" style="width:100%;padding:13px;background:var(--accent2);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      🚪 Se déconnecter
+    </button>
   </div>
 </div>
 
@@ -1764,6 +1780,15 @@ function toggleUserMenu(){
 function closeUserMenu(){
   document.getElementById('userMenu').classList.remove('open');
 }
+function openMobileUserMenu(){
+  const menu = document.getElementById('mobileUserMenu');
+  document.getElementById('mobileMenuName').textContent = currentUser?.displayName || currentUser?.email || 'Mon compte';
+  document.getElementById('mobileMenuEmail').textContent = currentUser?.email || '';
+  menu.classList.remove('hidden');
+}
+function closeMobileUserMenu(){
+  document.getElementById('mobileUserMenu').classList.add('hidden');
+}
 
 // Fermer le menu si clic ailleurs
 document.addEventListener('click', e => {
@@ -2048,8 +2073,11 @@ function mobileNav(tab) {
     if (!mobilePanelOpen) openMobilePanel();
     if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
   } else if (tab === 'user') {
-    // Connexion ou menu compte
-    openUserAuth();
+    if (currentUser) {
+      openMobileUserMenu(); // connecté → menu déconnexion
+    } else {
+      openUserAuth(); // non connecté → modal connexion
+    }
   } else if (tab === 'admin') {
     requireAdmin();
   }
