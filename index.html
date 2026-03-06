@@ -329,6 +329,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 .admin-view{flex:1;overflow-y:auto;padding:24px;display:none;-webkit-overflow-scrolling:touch;}
 .admin-view.visible{display:block;}
 .admin-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;margin-bottom:4px;line-height:1.2;}
+.admin-nav-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;}
+.admin-nav-tab{padding:8px 16px;border:none;background:none;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.admin-nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.admin-section{display:none;}.admin-section.active{display:block;}
+.user-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.user-table th{text-align:left;padding:8px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-size:.75rem;text-transform:uppercase;}
+.user-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.user-table tr:hover td{background:var(--surface2);}
+.user-avatar-sm{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.user-method-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:700;}
+.badge-email{background:#1a3a5c;color:#60b4ff;}
+.badge-google{background:#3a1a1a;color:#ff6b6b;}
+.users-stats{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.users-stat-box{background:var(--surface2);border-radius:12px;padding:12px 16px;flex:1;min-width:100px;text-align:center;}
+.users-stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent);}
+.users-stat-label{font-size:.72rem;color:var(--muted);margin-top:2px;}
 .admin-subtitle{color:var(--muted);font-size:.88rem;margin-bottom:24px;}
 .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .admin-form-card{background:var(--surface);border-radius:18px;padding:22px;border:1px solid var(--border);}
@@ -684,10 +700,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 <div class="app-body admin-view" id="adminView">
   <div style="max-width:1100px;margin:0 auto;width:100%;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-      <div class="admin-title">⚙️ <span data-i18n="storeManagement">Gestion des magasins</span></div>
+      <div class="admin-title">⚙️ Administration</div>
     </div>
-    <div class="admin-subtitle" data-i18n="adminSubtitle">Ajoutez, modifiez ou supprimez les magasins.</div>
+    <div class="admin-subtitle">Gérez vos magasins et consultez les utilisateurs inscrits.</div>
 
+    <!-- Onglets admin -->
+    <div class="admin-nav-tabs">
+      <button class="admin-nav-tab active" onclick="switchAdminTab('stores')">🏪 Magasins</button>
+      <button class="admin-nav-tab" onclick="switchAdminTab('users')" id="usersTabBtn">👥 Utilisateurs <span id="usersCountBadge" style="background:var(--accent);color:#000;border-radius:20px;padding:1px 7px;font-size:.7rem;margin-left:4px;"></span></button>
+    </div>
+
+    <!-- Section Magasins -->
+    <div class="admin-section active" id="adminSectionStores">
     <div class="admin-grid">
       <!-- FORM -->
       <div class="admin-form-card">
@@ -816,6 +840,48 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
         </table>
       </div>
     </div>
+    </div><!-- /adminSectionStores -->
+
+    <!-- Section Utilisateurs -->
+    <div class="admin-section" id="adminSectionUsers">
+      <div class="users-stats">
+        <div class="users-stat-box"><div class="users-stat-num" id="statTotal">–</div><div class="users-stat-label">Total inscrits</div></div>
+        <div class="users-stat-box"><div class="users-stat-num" id="statEmail">–</div><div class="users-stat-label">Via email</div></div>
+        <div class="users-stat-box"><div class="users-stat-num" id="statGoogle">–</div><div class="users-stat-label">Via Google</div></div>
+        <div class="users-stat-box"><div class="users-stat-num" id="statToday">–</div><div class="users-stat-label">Aujourd'hui</div></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div class="admin-form-title" style="margin:0">👥 Comptes inscrits</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="loadUsersFromFirestore()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.78rem;">🔄 Actualiser</button>
+          <button onclick="exportAllToGSheet()" style="background:#25D366;border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.78rem;font-weight:700;" id="exportGSheetBtn">📊 Exporter vers Sheets</button>
+          <button onclick="toggleGSheetConfig()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.78rem;" title="Configurer Google Sheets">⚙️</button>
+        </div>
+      </div>
+      <!-- Config Google Sheet URL -->
+      <div id="gsheetConfigBox" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:8px;">🔗 URL Google Apps Script</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px;">Collez l'URL de déploiement de votre Apps Script pour synchroniser automatiquement les inscriptions.</div>
+        <div style="display:flex;gap:8px;">
+          <input id="gsheetUrlInput" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;font-size:.78rem;" value="">
+          <button onclick="saveGSheetUrl()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:.78rem;white-space:nowrap;">💾 Sauver</button>
+        </div>
+        <div id="gsheetStatus" style="margin-top:6px;font-size:.75rem;color:var(--muted);"></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="user-table" id="usersTable">
+          <thead><tr>
+            <th></th>
+            <th>Nom / Pseudo</th>
+            <th>Email</th>
+            <th>Méthode</th>
+            <th>Inscription</th>
+          </tr></thead>
+          <tbody id="usersTableBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Cliquez sur l'onglet pour charger...</td></tr></tbody>
+        </table>
+      </div>
+    </div><!-- /adminSectionUsers -->
+
   </div>
 </div>
 
@@ -1768,6 +1834,8 @@ async function registerUser(){
   try{
     const cred = await fb.createUserWithEmailAndPassword(fb.auth, email, pwd);
     await fb.updateProfile(cred.user, { displayName: name });
+    // Sauvegarder dans Firestore
+    await saveUserToFirestore(cred.user, 'email');
     closeUserAuth();
     showToast('🎉 Compte créé ! Bienvenue ' + name + ' !');
   }catch(e){
@@ -1790,11 +1858,166 @@ async function loginUserGoogle(){
       err.textContent = '🚫 Utilisez le panneau admin pour ce compte.';
       err.style.display = 'block'; return;
     }
+    // Sauvegarder dans Firestore (si nouveau)
+    await saveUserToFirestore(user, 'google');
     closeUserAuth();
     showToast('✅ Bienvenue ' + (user.displayName || '') + ' !');
   }catch(e){
     err.textContent = '❌ ' + e.message;
     err.style.display = 'block';
+  }
+}
+
+// ════════════════════════════════
+//  GESTION UTILISATEURS
+// ════════════════════════════════
+async function saveUserToFirestore(user, method){
+  try{
+    const ref = window._fb.db.collection('users').doc(user.uid);
+    const snap = await ref.get();
+    if(!snap.exists){
+      const data = {
+        uid: user.uid,
+        displayName: user.displayName || '',
+        email: user.email,
+        method: method,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        photoURL: user.photoURL || ''
+      };
+      await ref.set(data);
+      // Sync Google Sheet si configuré
+      if(window.GSHEET_URL) sendToGoogleSheet(data);
+    }
+  }catch(e){ console.warn('saveUser:', e); }
+}
+
+function switchAdminTab(tab){
+  document.getElementById('adminSectionStores').classList.toggle('active', tab==='stores');
+  document.getElementById('adminSectionUsers').classList.toggle('active', tab==='users');
+  document.querySelectorAll('.admin-nav-tab').forEach((btn,i)=>{
+    btn.classList.toggle('active', (tab==='stores' && i===0)||(tab==='users' && i===1));
+  });
+  if(tab==='users') loadUsersFromFirestore();
+}
+
+async function loadUsersFromFirestore(){
+  const tbody = document.getElementById('usersTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)"><div class="spinner" style="margin:0 auto"></div></td></tr>';
+  try{
+    const snap = await window._fb.db.collection('users').orderBy('createdAt','desc').get();
+    const users = snap.docs.map(d=>d.data());
+
+    // Stats
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayCount = users.filter(u=>u.createdAt?.toDate && u.createdAt.toDate()>=today).length;
+    document.getElementById('statTotal').textContent  = users.length;
+    document.getElementById('statEmail').textContent  = users.filter(u=>u.method==='email').length;
+    document.getElementById('statGoogle').textContent = users.filter(u=>u.method==='google').length;
+    document.getElementById('statToday').textContent  = todayCount;
+    document.getElementById('usersCountBadge').textContent = users.length;
+
+    if(!users.length){
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Aucun utilisateur inscrit pour l\'instant.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML='';
+    users.forEach(u=>{
+      const initial = (u.displayName||u.email||'?').charAt(0).toUpperCase();
+      const date = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString('fr-BE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '–';
+      const methodBadge = u.method==='google'
+        ? '<span class="user-method-badge badge-google">🔑 Google</span>'
+        : '<span class="user-method-badge badge-email">✉️ Email</span>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="user-avatar-sm">${initial}</div></td>
+        <td style="font-weight:600">${u.displayName||'–'}</td>
+        <td style="color:var(--muted);font-size:.78rem">${u.email}</td>
+        <td>${methodBadge}</td>
+        <td style="color:var(--muted);font-size:.75rem;white-space:nowrap">${date}</td>`;
+      tbody.appendChild(tr);
+    });
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--accent2);padding:20px">❌ Erreur: '+e.message+'</td></tr>';
+  }
+}
+
+function sendToGoogleSheet(data){
+  if(!window.GSHEET_URL) return;
+  fetch(window.GSHEET_URL, {
+    method:'POST',
+    body: JSON.stringify({
+      uid: data.uid,
+      displayName: data.displayName,
+      email: data.email,
+      method: data.method,
+      createdAt: new Date().toISOString()
+    })
+  }).catch(e=>console.warn('GSheet sync:', e));
+}
+
+// URL Google Apps Script — persistée dans localStorage
+window.GSHEET_URL = localStorage.getItem('nearshop_gsheet_url') || null;
+
+function toggleGSheetConfig(){
+  const box = document.getElementById('gsheetConfigBox');
+  const input = document.getElementById('gsheetUrlInput');
+  if(!box) return;
+  const visible = box.style.display !== 'none';
+  box.style.display = visible ? 'none' : 'block';
+  if(!visible && window.GSHEET_URL) input.value = window.GSHEET_URL;
+}
+
+function saveGSheetUrl(){
+  const url = document.getElementById('gsheetUrlInput').value.trim();
+  const status = document.getElementById('gsheetStatus');
+  if(!url){ status.textContent = '⚠️ URL vide'; status.style.color = 'var(--accent2)'; return; }
+  if(!url.startsWith('https://script.google.com')){
+    status.textContent = '❌ URL invalide — doit commencer par https://script.google.com';
+    status.style.color = 'var(--accent2)'; return;
+  }
+  window.GSHEET_URL = url;
+  localStorage.setItem('nearshop_gsheet_url', url);
+  status.textContent = '✅ URL sauvegardée !';
+  status.style.color = 'var(--green)';
+  setTimeout(()=>{ status.textContent=''; document.getElementById('gsheetConfigBox').style.display='none'; }, 2000);
+}
+
+async function exportAllToGSheet(){
+  if(!window.GSHEET_URL){
+    showToast("⚙️ Configurez d'abord l'URL Google Sheets");
+    document.getElementById('gsheetConfigBox').style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('exportGSheetBtn');
+  btn.textContent = '⏳ Export...';
+  btn.disabled = true;
+  try{
+    const snap = await window._fb.db.collection('users').orderBy('createdAt','desc').get();
+    const users = snap.docs.map(d=>d.data());
+    let ok = 0, fail = 0;
+    for(const u of users){
+      try{
+        await fetch(window.GSHEET_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify({
+            uid: u.uid,
+            displayName: u.displayName || '',
+            email: u.email,
+            method: u.method || 'email',
+            createdAt: u.createdAt?.toDate ? u.createdAt.toDate().toISOString() : new Date().toISOString()
+          })
+        });
+        ok++;
+      } catch(e){ fail++; }
+    }
+    showToast('✅ ' + ok + ' utilisateurs exportés vers Google Sheets !');
+  } catch(e){
+    showToast('❌ Erreur export: ' + e.message);
+  } finally {
+    btn.textContent = '📊 Exporter vers Sheets';
+    btn.disabled = false;
   }
 }
 
