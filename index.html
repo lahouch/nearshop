@@ -2273,6 +2273,7 @@ function renderStoresMobile() {
     mfavBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleFav(s.id, e); });
     const mfooter = div.querySelector(".card-footer");
     if(mfooter) mfooter.appendChild(mfavBtn); else div.appendChild(mfavBtn);
+    const storeRef = {...s}; // capture propre pour le closure
     div.addEventListener('click', () => {
       if(_panelTransitioning) return; // ignorer si en cours de transition
       closeMobilePanel();
