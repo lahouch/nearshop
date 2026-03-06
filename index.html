@@ -1944,16 +1944,16 @@ async function loadUsersFromFirestore(){
 
 function sendToGoogleSheet(data){
   if(!window.GSHEET_URL) return;
-  fetch(window.GSHEET_URL, {
-    method:'POST',
-    body: JSON.stringify({
-      uid: data.uid,
-      displayName: data.displayName,
-      email: data.email,
-      method: data.method,
-      createdAt: new Date().toISOString()
-    })
-  }).catch(e=>console.warn('GSheet sync:', e));
+  // Utiliser GET params pour éviter les problèmes CORS (no preflight)
+  const params = new URLSearchParams({
+    uid:         data.uid        || '',
+    displayName: data.displayName|| '',
+    email:       data.email      || '',
+    method:      data.method     || 'email',
+    createdAt:   data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+  });
+  fetch(window.GSHEET_URL + '?' + params.toString(), { method:'GET', mode:'no-cors' })
+    .catch(e=>console.warn('GSheet sync:', e));
 }
 
 // URL Google Apps Script — persistée dans localStorage
@@ -1998,17 +1998,14 @@ async function exportAllToGSheet(){
     let ok = 0, fail = 0;
     for(const u of users){
       try{
-        await fetch(window.GSHEET_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify({
-            uid: u.uid,
-            displayName: u.displayName || '',
-            email: u.email,
-            method: u.method || 'email',
-            createdAt: u.createdAt?.toDate ? u.createdAt.toDate().toISOString() : new Date().toISOString()
-          })
+        const params = new URLSearchParams({
+          uid:         u.uid             || '',
+          displayName: u.displayName     || '',
+          email:       u.email           || '',
+          method:      u.method          || 'email',
+          createdAt:   u.createdAt?.toDate ? u.createdAt.toDate().toISOString() : new Date().toISOString()
         });
+        await fetch(window.GSHEET_URL + '?' + params.toString(), { method:'GET', mode:'no-cors' });
         ok++;
       } catch(e){ fail++; }
     }
