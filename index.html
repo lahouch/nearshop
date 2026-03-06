@@ -446,7 +446,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     </div>
     <div class="form-group">
       <label class="form-label">Mot de passe</label>
-      <input class="form-input" id="authPwd" type="password" placeholder="••••••••" onkeydown='if(event.key==='Enter')loginAdmin()">
+      <input class="form-input" id="authPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()">
     </div>
     <button class="form-submit" onclick="loginAdmin()">🔐 Accéder à l'administration</button>
     <button class="form-cancel" onclick="document.getElementById('authWall').classList.add('hidden')" style="margin-top:8px">Annuler</button>
@@ -514,7 +514,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       </div>
       <div class="form-group">
         <label class="form-label">Mot de passe</label>
-        <input class="form-input" id="userPwd" type="password" placeholder="••••••••" onkeydown='if(event.key==='Enter')loginUser()">
+        <input class="form-input" id="userPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginUser()">
       </div>
       <button class="form-submit" onclick="loginUser()">✅ Se connecter</button>
       <div class="auth-divider">ou</div>
@@ -536,7 +536,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       </div>
       <div class="form-group">
         <label class="form-label">Mot de passe</label>
-        <input class="form-input" id="regPwd" type="password" placeholder="Min. 6 caractères" onkeydown='if(event.key==='Enter')registerUser()">
+        <input class="form-input" id="regPwd" type="password" placeholder="Min. 6 caractères" onkeydown="if(event.key==='Enter')registerUser()">
       </div>
       <button class="form-submit" onclick="registerUser()">🚀 Créer mon compte</button>
       <div class="auth-divider">ou</div>
@@ -545,6 +545,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
         Continuer avec Google
       </button>
     </div>
+  </div><!-- /auth-scroll -->
   </div>
 </div>
 
