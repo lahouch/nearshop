@@ -455,15 +455,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
 <!-- ══ MOBILE USER MENU ══ -->
 <div class="city-modal hidden" id="mobileUserMenu">
-  <div class="city-box" style="padding-bottom:40px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem" id="mobileMenuName">Mon compte</div>
-        <div style="font-size:.78rem;color:var(--muted);margin-top:2px" id="mobileMenuEmail"></div>
+  <div class="city-box" style="padding-bottom:calc(100px + env(safe-area-inset-bottom));">
+    <!-- En-tête compte -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+      <div id="mobileMenuAvatar" style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="mobileMenuName">Mon compte</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="mobileMenuEmail"></div>
       </div>
-      <button onclick="closeMobileUserMenu()" style="background:var(--surface2);border:none;border-radius:50%;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
+      <button onclick="closeMobileUserMenu()" style="background:var(--surface2);border:none;border-radius:50%;width:32px;height:32px;color:var(--muted);cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>
     </div>
-    <button onclick="doLogout();closeMobileUserMenu()" style="width:100%;padding:13px;background:var(--accent2);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+    <!-- Bouton déconnexion bien visible -->
+    <button onclick="doLogout();closeMobileUserMenu()" style="width:100%;padding:15px;background:#e53935;color:#fff;border:none;border-radius:14px;font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">
       🚪 Se déconnecter
     </button>
   </div>
@@ -1782,8 +1785,14 @@ function closeUserMenu(){
 }
 function openMobileUserMenu(){
   const menu = document.getElementById('mobileUserMenu');
-  document.getElementById('mobileMenuName').textContent = currentUser?.displayName || currentUser?.email || 'Mon compte';
-  document.getElementById('mobileMenuEmail').textContent = currentUser?.email || '';
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Mon compte';
+  const email = currentUser?.email || '';
+  const initial = name.charAt(0).toUpperCase();
+  const color = isAdmin ? '#f0c040' : '#3dffa0';
+  document.getElementById('mobileMenuName').textContent = name;
+  document.getElementById('mobileMenuEmail').textContent = email;
+  const avatar = document.getElementById('mobileMenuAvatar');
+  if(avatar){ avatar.textContent = initial; avatar.style.background = color; avatar.style.color = isAdmin ? '#000' : '#000'; }
   menu.classList.remove('hidden');
 }
 function closeMobileUserMenu(){
