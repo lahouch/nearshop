@@ -741,6 +741,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
             <label class="form-label" data-i18n="phone">Téléphone</label>
             <input class="form-input" id="f-phone" placeholder="+32 2 000 00 00">
           </div>
+          <div class="form-group">
+            <label class="form-label">📱 WhatsApp <span style="font-weight:400;color:var(--muted);font-size:.78rem">(numéro international)</span></label>
+            <input class="form-input" id="f-whatsapp" placeholder="+32 470 00 00 00" type="tel">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label" data-i18n="address">Adresse</label>
@@ -830,7 +834,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       <div class="modal-info-grid">
         <div class="modal-info-row"><div class="modal-info-icon">📍</div><div><div class="modal-info-label" data-i18n="address">Adresse</div><div class="modal-info-value" id="modalAddress"></div></div></div>
         <div class="modal-info-row"><div class="modal-info-icon">🕐</div><div><div class="modal-info-label" data-i18n="hours">Horaires</div><div class="modal-info-value" id="modalHours"></div></div></div>
-        <div class="modal-info-row"><div class="modal-info-icon">📞</div><div><div class="modal-info-label" data-i18n="phone">Téléphone</div><div class="modal-info-value" id="modalPhone"></div></div></div>
+        <div class="modal-info-row" id="modalPhoneRow"><div class="modal-info-icon">📞</div><div><div class="modal-info-label" data-i18n="phone">Téléphone</div><div class="modal-info-value" id="modalPhone"></div></div></div>
+        <div class="modal-info-row" id="modalWhatsappRow" style="display:none"><div class="modal-info-icon">💬</div><div><div class="modal-info-label">WhatsApp</div><div class="modal-info-value" id="modalWhatsapp"></div></div></div>
       </div>
       <div class="modal-actions">
         <button class="btn-primary" id="modalDirections">🗺️ <span data-i18n="directions">Itinéraire</span></button>
@@ -1413,7 +1418,24 @@ function openStore(s) {
   document.getElementById('modalCat').textContent=s.cat;
   document.getElementById('modalAddress').textContent=s.address;
   document.getElementById('modalHours').textContent=s.hours;
-  document.getElementById('modalPhone').textContent=s.phone;
+  // Téléphone
+  document.getElementById('modalPhone').textContent = s.phone || '';
+  document.getElementById('modalPhoneRow').style.display = s.phone ? '' : 'none';
+
+  // WhatsApp — numéro cliquable
+  const waEl  = document.getElementById('modalWhatsapp');
+  const waRow = document.getElementById('modalWhatsappRow');
+  if(s.whatsapp){
+    // Nettoyer le numéro : garder seulement chiffres et +
+    const waNum = s.whatsapp.replace(/[\s\-().]/g, '');
+    const waUrl = 'https://wa.me/' + waNum.replace('+','');
+    waEl.innerHTML = '<a href="' + waUrl + '" target="_blank" rel="noopener" style="color:#25D366;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:6px">'
+      + '<svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.138.563 4.14 1.547 5.874L0 24l6.273-1.519A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.032-1.388l-.36-.214-3.733.904.946-3.629-.235-.374A9.818 9.818 0 012.182 12C2.182 6.573 6.573 2.182 12 2.182S21.818 6.573 21.818 12 17.427 21.818 12 21.818z"/></svg>'
+      + s.whatsapp + '</a>';
+    waRow.style.display = '';
+  } else {
+    waRow.style.display = 'none';
+  }
 
   // image
   const imgEl=document.getElementById('modalImg');
@@ -1555,6 +1577,7 @@ async function submitStore(){
   const data={
     name, cat:document.getElementById('f-cat').value,
     phone:document.getElementById('f-phone').value.trim(),
+    whatsapp:document.getElementById('f-whatsapp').value.trim(),
     address, lat, lng,
     hours:document.getElementById('f-hours').value.trim(),
     status:document.getElementById('f-status').value,
@@ -1576,6 +1599,7 @@ function editStore(id){
   document.getElementById('f-name').value=s.name;
   document.getElementById('f-cat').value=s.cat;
   document.getElementById('f-phone').value=s.phone||'';
+  document.getElementById('f-whatsapp').value=s.whatsapp||'';
   document.getElementById('f-address').value=s.address;
   document.getElementById('f-lat').value=s.lat;
   document.getElementById('f-lng').value=s.lng;
@@ -1603,7 +1627,7 @@ async function deleteStore(id){
 }
 
 function resetForm(){
-  ['f-id','f-name','f-phone','f-address','f-lat','f-lng','f-hours','f-existingPhotos'].forEach(id=>{
+  ['f-id','f-name','f-phone','f-whatsapp','f-address','f-lat','f-lng','f-hours','f-existingPhotos'].forEach(id=>{
     const el=document.getElementById(id); if(el)el.value=id==='f-existingPhotos'?'[]':'';
   });
   document.getElementById('f-status').value='open';
