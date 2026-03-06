@@ -2060,38 +2060,50 @@ function doLocate(silent=false){
 }
 
 function showPermissionHelp(){
-  // Bannière d'aide pour activer la localisation
-  const existing = document.getElementById('permHelp');
-  if(existing) return;
+  if(document.getElementById('permHelp')) return;
 
   const banner = document.createElement('div');
   banner.id = 'permHelp';
-  banner.style.cssText = `position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:2px solid var(--accent2);border-radius:16px;padding:16px 18px;z-index:9999;font-family:'Syne',sans-serif;max-width:320px;width:calc(100% - 32px);box-shadow:var(--shadow);animation:slideIn .3s ease`;
-  banner.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <span style="font-size:1.6rem">📍</span>
-      <div>
-        <div style="font-weight:800;font-size:.9rem">Localisation bloquée</div>
-        <div style="font-size:.75rem;color:var(--muted)">Autorisez l acces pour voir les magasins près de vous</div>
-      </div>
-    </div>
-    <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
-      <strong style="color:var(--text)">Sur Android :</strong><br>
-      Appui long sur l'icône NearShop Drive →<br>
-      <strong style="color:var(--accent)">Infos app → Autorisations → Localisation → Autoriser</strong>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick='doLocate(false);document.getElementById('permHelp').remove()" 
-        style='flex:1;padding:9px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer">
-        Réessayer
-      </button>
-      <button onclick='document.getElementById('permHelp').remove()" 
-        style='padding:9px 14px;background:var(--surface2);color:var(--muted);border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer">
-        Fermer
-      </button>
-    </div>`;
+  banner.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface);border:2px solid var(--accent2);border-radius:16px;padding:16px 18px;z-index:10001;font-family:\'Syne\',sans-serif;max-width:320px;width:calc(100% - 32px);box-shadow:var(--shadow)';
+
+  // Titre
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px';
+  head.innerHTML = '<span style="font-size:1.6rem">📍</span>'
+    + '<div>'
+    + '<div style="font-weight:800;font-size:.9rem">Localisation bloquée</div>'
+    + "<div style='font-size:.75rem;color:var(--muted)'>Autorisez l'accès pour voir les magasins près de vous</div>"
+    + '</div>';
+  banner.appendChild(head);
+
+  // Instructions
+  const info = document.createElement('div');
+  info.style.cssText = 'background:var(--bg);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);line-height:1.7;margin-bottom:12px';
+  info.innerHTML = '<strong style="color:var(--text)">Sur Android :</strong><br>'
+    + "Appui long sur l'icône NearShop Drive →<br>"
+    + '<strong style="color:var(--accent)">Infos app → Autorisations → Localisation → Autoriser</strong>';
+  banner.appendChild(info);
+
+  // Boutons
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px';
+
+  const btnRetry = document.createElement('button');
+  btnRetry.textContent = 'Réessayer';
+  btnRetry.style.cssText = 'flex:1;padding:11px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:\'Syne\',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;touch-action:manipulation';
+  btnRetry.addEventListener('click', () => { banner.remove(); doLocate(false); });
+
+  const btnClose = document.createElement('button');
+  btnClose.textContent = 'Fermer';
+  btnClose.style.cssText = 'padding:11px 16px;background:var(--surface2);color:var(--muted);border:none;border-radius:9px;font-family:\'Syne\',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;touch-action:manipulation';
+  btnClose.addEventListener('click', () => banner.remove());
+
+  btns.appendChild(btnRetry);
+  btns.appendChild(btnClose);
+  banner.appendChild(btns);
+
   document.body.appendChild(banner);
-  setTimeout(() => banner?.remove(), 15000);
+  setTimeout(() => banner?.remove(), 20000);
 }
 
 function showToast(msg){
@@ -2250,6 +2262,12 @@ function renderStoresMobile() {
       </div>`;
 
     // ✅ addEventListener au lieu de onclick inline → pas de conflit de re-rendu
+    // Bouton favori
+    const mfavBtn = document.createElement("button");
+    mfavBtn.className = "fav-btn";
+    mfavBtn.innerHTML = isFav(s.id) ? "❤️" : "🤍";
+    mfavBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleFav(s.id, e); });
+    div.appendChild(mfavBtn);
     const storeRef = {...s}; // capture propre de la référence
     div.addEventListener('click', () => {
       if(_panelTransitioning) return; // ignorer si en cours de transition
