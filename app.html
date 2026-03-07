@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark" data-lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NearShop Drive">
+<meta name="application-name" content="NearShop Drive">
+<meta name="theme-color" content="#161921">
+<meta name="description" content="Trouvez les magasins autour de vous">
+<meta name="msapplication-TileColor" content="#f0c040">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<!-- Apple touch icons (inline via JS) -->
+<title>NearShop Drive</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDSmtbjCnEWnjRqW3ir5212FZzYRMF3Bts&libraries=places&language=fr" defer></script>
+
+<!-- Firebase SDKs -->
+<!-- Firebase SDK via CDN compat (accessible globalement, pas de module) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+// ── CONFIG FIREBASE ──
+const firebaseConfig = {
+  apiKey:            "AIzaSyDSmtbjCnEWnjRqW3ir5212FZzYRMF3Bts",
+  authDomain:        "nearshop-app-b6dc2.firebaseapp.com",
+  projectId:         "nearshop-app-b6dc2",
+  storageBucket:     "nearshop-app-b6dc2.firebasestorage.app",
+  messagingSenderId: "855058433751",
+  appId:             "1:855058433751:web:3f3093ddbe5e7f72611292"
+};
+firebase.initializeApp(firebaseConfig);
+window._cloudinary = { cloud: "dd2fsaqvl", preset: "nearshop" };
+
+// Exposer fb globalement
+window._fb = {
+  db:         firebase.firestore(),
+  auth:       firebase.auth(),
+  gProvider:  new firebase.auth.GoogleAuthProvider(),
+  // Firestore helpers
+  collection: (db, col)         => db.collection(col),
+  addDoc:     (ref, data)       => ref.add(data),
+  getDocs:    (ref)             => ref.get(),
+  doc:        (db, col, id)     => db.collection(col).doc(id),
+  updateDoc:  (ref, data)       => ref.update(data),
+  deleteDoc:  (ref)             => ref.delete(),
+  onSnapshot: (ref, cb, err)    => ref.onSnapshot(cb, err),
+  query:      (ref)             => ref,
+  orderBy:    (field, dir)      => field,
+  serverTimestamp: ()           => firebase.firestore.FieldValue.serverTimestamp(),
+  // Auth helpers
+  signInWithEmailAndPassword:   (auth, e, p)  => auth.signInWithEmailAndPassword(e, p),
+  createUserWithEmailAndPassword:(auth, e, p) => auth.createUserWithEmailAndPassword(e, p),
+  signInWithPopup:              (auth, prov)  => auth.signInWithPopup(prov),
+  signOut:                      (auth)        => auth.signOut(),
+  onAuthStateChanged:           (auth, cb)    => auth.onAuthStateChanged(cb),
+  updateProfile:                (user, data)  => user.updateProfile(data)
+};
+window._fbReady = true;
+</script>
+
+<style>
+/* ── CSS VARIABLES (themes) ── */
+:root {
+  --bg:#0d0f14; --surface:#161921; --surface2:#1e2330;
+  --accent:#f0c040; --accent2:#ff6b35; --text:#f0ede8;
+  --muted:#7a8099; --border:#2a2f3e; --radius:16px; --green:#3dffa0;
+  --shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+[data-theme="light"] {
+  --bg:#f4f5f7; --surface:#ffffff; --surface2:#eef0f5;
+  --text:#111318; --muted:#7a8099; --border:#dde0ea;
+  --shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;transition:background .3s,color .3s;-webkit-tap-highlight-color:transparent;}
+
+/* ── MOBILE NAV BAR (bottom) ── */
+.mobile-nav{display:none;position:fixed;bottom:16px;left:16px;right:16px;height:64px;background:var(--surface);border:1px solid var(--border);border-radius:20px;z-index:9999 !important;flex-direction:row;align-items:center;justify-content:space-around;box-shadow:0 8px 32px rgba(0,0,0,.6);padding:0 8px;isolation:isolate;}
+.mobile-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:.65rem;font-family:'Syne',sans-serif;font-weight:700;padding:8px 0;transition:color .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;position:relative;z-index:10000 !important;pointer-events:all !important;}
+.mobile-nav-btn.active{color:var(--accent);}
+.mobile-nav-btn svg{width:22px;height:22px;}
+.mobile-nav-icon{font-size:1.3rem;}
+
+/* ── MOBILE PANEL (liste magasins) ── */
+.mobile-panel{display:none;position:fixed;bottom:96px;left:12px;right:12px;border-radius:20px;z-index:5000;background:var(--surface);transform:translateY(calc(100% + 200px));transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:70vh;overflow:hidden;flex-direction:column;box-shadow:0 -4px 32px rgba(0,0,0,.5);pointer-events:none;}
+.mobile-panel.open{transform:translateY(0) !important;pointer-events:all;}
+.mobile-panel-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 6px;flex-shrink:0;cursor:pointer;}
+.mobile-panel-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.panel-close-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surface2);color:var(--muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.panel-close-btn:hover,.panel-close-btn:active{background:var(--accent2);color:#fff;}
+.mobile-panel-content{overflow-y:auto;flex:1;padding:0 12px 12px;}
+.mobile-panel-content::-webkit-scrollbar{display:none;}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  header{padding:0 14px;height:56px;gap:8px;}
+  .logo{font-size:1.1rem;}
+  .nav-tabs{display:none;}
+  .header-right{gap:6px;}
+  .locate-btn span{display:none;}
+  .locate-btn{padding:0 12px;}
+  .lang-btn{padding:0 9px;font-size:.72rem;}
+  .icon-btn{width:32px;height:32px;}
+
+  .app-body{flex-direction:column;}
+  .user-view{position:relative;}
+  .sidebar{display:none !important;}
+  .map-wrap{flex:1;width:100%;}
+  #map{height:100% !important;}
+  .user-view{padding-bottom:0 !important;}
+  .map-wrap{margin-bottom:0 !important;}
+  body{padding-bottom:96px;}
+
+  .radius-info{
+    bottom:auto !important;
+    top:10px !important;
+    left:10px !important;
+    right:auto !important;
+    padding:6px 10px;
+    z-index:1200;
+  }
+  .radius-label{font-size:.62rem;margin-bottom:4px;}
+  .radius-btn{padding:3px 7px;font-size:.68rem;}
+  .radius-btns{gap:3px;}
+  .radius-btn{padding:4px 7px;font-size:.7rem;}
+  .radius-label{font-size:.65rem;margin-bottom:4px;}
+
+  .mobile-nav{display:flex;}
+  .mobile-panel{display:flex;}
+
+  body{padding-bottom:0;}
+  /* ── ADMIN MOBILE ── */
+  .admin-view{padding:10px 12px 110px !important;overflow-y:auto;}
+  .admin-title{font-size:1.15rem !important;margin-bottom:2px;}
+  .admin-subtitle{font-size:.8rem;margin-bottom:14px;}
+  .admin-grid{grid-template-columns:1fr !important;gap:12px;}
+  .admin-form-card{padding:16px !important;border-radius:14px !important;}
+  .admin-form-card:nth-child(2){display:none !important;} /* cache carte stats sur mobile */
+  .admin-table-card{grid-column:span 1 !important;padding:14px !important;border-radius:14px !important;}
+  .admin-form-title{font-size:.88rem;margin-bottom:12px;}
+  .form-group{margin-bottom:10px;}
+  .form-label{font-size:.7rem;}
+  .form-input,.form-select,.form-textarea{padding:9px 11px;font-size:.85rem;border-radius:8px;}
+  .form-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .form-submit{padding:13px;font-size:.88rem;border-radius:10px;}
+  .form-cancel{padding:11px;font-size:.85rem;}
+  #adminPickerMap{height:160px !important;border-radius:10px;}
+  .place-search-input{font-size:.88rem;padding:10px 12px 10px 38px;}
+  .photo-upload{padding:12px;}
+  .fetched-info{padding:10px;}
+  .fetched-row{font-size:.78rem;}
+  /* TABLE mobile → cards style */
+  .admin-table thead{display:none;}
+  .admin-table tbody tr{display:flex;flex-direction:column;background:var(--surface2);border-radius:12px;margin-bottom:10px;padding:12px;border-bottom:none !important;}
+  .admin-table tbody tr:hover td{background:transparent;}
+  .admin-table td{padding:3px 0 !important;border-bottom:none !important;font-size:.82rem;display:flex;align-items:center;gap:8px;}
+  .admin-table td:first-child{font-size:1.4rem;}
+  .tbl-btn{padding:7px 14px;font-size:.78rem;}
+  .admin-form-title span{font-size:.88rem;}
+
+  .modal{border-radius:20px 20px 0 0;max-height:92vh;position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;}
+  .modal-overlay{align-items:flex-end;padding:0;}
+  .modal-img{height:160px;}
+
+  .auth-box{border-radius:20px;padding:24px;}
+}
+
+@media (max-width: 480px) {
+  .radius-btns{flex-wrap:wrap;gap:4px;}
+}
+
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:62px;background:var(--surface);border-bottom:1px solid var(--border);z-index:1000;flex-shrink:0;gap:12px;}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.logo span{color:var(--accent);}
+.logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.7);}}
+
+.nav-tabs{display:flex;gap:3px;background:var(--bg);padding:4px;border-radius:12px;}
+.nav-tab{padding:7px 18px;border-radius:9px;font-family:'Syne',sans-serif;font-weight:600;font-size:.82rem;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .2s;}
+.nav-tab.active{background:var(--accent);color:#000;}
+.nav-tab:hover:not(.active){color:var(--text);}
+
+.header-right{display:flex;align-items:center;gap:8px;}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);}
+.lang-btn{padding:0 12px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer;transition:all .2s;}
+.lang-btn:hover{border-color:var(--accent);color:var(--accent);}
+.locate-btn{display:flex;align-items:center;gap:7px;padding:0 16px;height:36px;background:var(--accent2);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.locate-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
+.city-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:8000;display:flex;align-items:flex-end;justify-content:center;}
+.city-modal.hidden{display:none;}
+.city-box{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px 0;width:100%;max-width:500px;border-top:1px solid var(--border);display:flex;flex-direction:column;max-height:85vh;}
+.city-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(100px + env(safe-area-inset-bottom));flex:1;}
+.city-search-wrap{position:relative;margin-bottom:12px;}
+.city-input{width:100%;padding:12px 16px 12px 42px;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Syne',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box;}
+.city-input:focus{border-color:var(--accent);}
+.city-input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none;}
+.city-results{list-style:none;padding:0;margin:0;max-height:220px;overflow-y:auto;}
+.city-result-item{padding:11px 14px;border-radius:10px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:10px;transition:background .15s;}
+.city-result-item:hover,.city-result-item:active{background:var(--surface2);}
+.city-result-icon{font-size:1.1rem;flex-shrink:0;}
+.city-or{text-align:center;color:var(--muted);font-size:.78rem;margin:10px 0;}
+.city-map-hint{background:var(--bg);border:1px dashed var(--border);border-radius:12px;padding:12px;text-align:center;font-size:.82rem;color:var(--muted);cursor:pointer;transition:all .2s;}
+.city-map-hint:hover{border-color:var(--accent);color:var(--accent);}
+/* Mini-menu localisation */
+.locate-menu{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:4px;min-width:200px;}
+.locate-menu.hidden{display:none;}
+.locate-menu-item{padding:11px 16px;border:none;background:transparent;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;font-size:.85rem;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;transition:background .15s;-webkit-tap-highlight-color:transparent;}
+.locate-menu-item:hover,.locate-menu-item:active{background:var(--surface2);}
+
+/* ── LAYOUT ── */
+.app-body{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:370px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sidebar-header{padding:16px 16px 12px;border-bottom:1px solid var(--border);}
+.sidebar-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.count-badge{background:var(--accent);color:#000;font-size:.7rem;font-weight:800;padding:3px 9px;border-radius:20px;}
+.search-box{display:flex;align-items:center;gap:9px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:0 12px;transition:border-color .2s;}
+.search-box:focus-within{border-color:var(--accent);}
+.search-box svg{color:var(--muted);flex-shrink:0;}
+.search-box input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;padding:10px 0;}
+.search-box input::placeholder{color:var(--muted);}
+.filter-row{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
+.filter-chip{padding:4px 11px;border-radius:20px;font-size:.75rem;font-weight:500;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;}
+.fav-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;padding:2px 4px;line-height:1;transition:transform .2s;-webkit-tap-highlight-color:transparent;margin-left:auto;flex-shrink:0;}
+.fav-btn:active{transform:scale(1.4);}
+.filter-chip.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
+.filter-chip:hover:not(.active){border-color:var(--muted);color:var(--text);}
+
+/* ── STORE LIST ── */
+.store-list{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px;}
+.store-list::-webkit-scrollbar{width:3px;}
+.store-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.store-card{background:var(--surface2);border-radius:14px;padding:13px;cursor:pointer;border:1.5px solid transparent;transition:all .2s;animation:slideIn .3s ease both;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
+.store-card:hover,.store-card.active{border-color:var(--accent);}
+.card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;}
+.store-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;}
+.card-info{flex:1;}
+.card-name{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;margin-bottom:2px;line-height:1.2;}
+.card-cat{font-size:.73rem;color:var(--muted);font-weight:500;}
+.card-dist{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:var(--accent);white-space:nowrap;}
+.card-address{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:7px;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;}
+.open-badge{display:flex;align-items:center;gap:5px;font-size:.73rem;font-weight:600;}
+.open-dot{width:6px;height:6px;border-radius:50%;}
+.open-dot.open{background:var(--green);box-shadow:0 0 6px var(--green);}
+.open-dot.closed{background:var(--accent2);}
+.stars-mini{font-size:.75rem;color:var(--accent);}
+
+/* ── MAP ── */
+#map{flex:1;background:var(--bg);width:100%;height:100%;min-height:400px;}
+.map-wrap{position:relative;flex:1;min-height:400px;isolation:isolate;}
+.radius-info{position:absolute;bottom:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;z-index:1000;font-family:'Syne',sans-serif;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.3);}
+.radius-info span{color:var(--accent);}
+.radius-label{font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.radius-btns{display:flex;gap:5px;align-items:center;}
+.radius-btn{padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer;transition:all .2s;}
+.radius-btn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.radius-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(5px);}
+.modal-overlay.visible{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border-radius:22px;width:100%;max-width:540px;border:1px solid var(--border);overflow:hidden;transform:scale(.95) translateY(10px);transition:transform .25s;max-height:90vh;overflow-y:auto;}
+.modal-overlay.visible .modal{transform:scale(1) translateY(0);}
+
+.modal-img{width:100%;height:190px;background:linear-gradient(135deg,var(--surface2),var(--border));display:flex;align-items:center;justify-content:center;font-size:3.5rem;position:relative;overflow:hidden;}
+.modal-img img{width:100%;height:100%;object-fit:cover;}
+.modal-img-overlay{position:absolute;inset:0;background:linear-gradient(to top,var(--surface) 0%,transparent 60%);}
+.modal-body{padding:20px;padding-bottom:calc(110px + env(safe-area-inset-bottom));}
+.modal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
+.modal-name{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;line-height:1.1;}
+.modal-cat{font-size:.8rem;color:var(--accent);font-weight:600;margin-top:3px;}
+.modal-close{background:var(--surface2);border:none;color:var(--text);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s;}
+.modal-close:hover{background:var(--border);}
+.modal-info-grid{display:grid;gap:8px;margin-bottom:14px;}
+.modal-info-row{display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--surface2);border-radius:11px;}
+.modal-info-icon{width:34px;height:34px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem;}
+.modal-info-label{font-size:.7rem;color:var(--muted);margin-bottom:2px;}
+.modal-info-value{font-size:.85rem;font-weight:500;}
+.modal-actions{display:flex;gap:8px;margin-bottom:18px;}
+.btn-primary{flex:1;padding:11px;background:var(--accent);color:#000;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;transition:all .2s;}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-secondary{padding:11px 14px;background:var(--surface2);color:var(--text);border:none;border-radius:11px;font-family:'Syne',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s;}
+.btn-secondary:hover{background:var(--border);}
+.btn-share{padding:11px 14px;background:var(--surface2);color:var(--text);border:none;border-radius:11px;font-family:'Syne',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s;}
+.btn-share:hover{background:var(--border);}
+
+/* ── REVIEWS ── */
+.reviews-section{border-top:1px solid var(--border);padding-top:16px;}
+.reviews-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+.avg-rating{display:flex;align-items:center;gap:6px;}
+.avg-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent);}
+.stars{font-size:1rem;color:var(--accent);}
+.review-list{display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;margin-bottom:12px;}
+.review-list::-webkit-scrollbar{width:3px;}
+.review-list::-webkit-scrollbar-thumb{background:var(--border);}
+.review-item{background:var(--surface2);border-radius:10px;padding:10px 12px;}
+.review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.review-author{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;}
+.review-stars{font-size:.8rem;color:var(--accent);}
+.review-text{font-size:.82rem;color:var(--muted);line-height:1.5;}
+.review-date{font-size:.7rem;color:var(--muted);margin-top:4px;}
+.add-review{background:var(--bg);border-radius:11px;padding:12px;}
+.add-review-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:8px;}
+.star-picker{display:flex;gap:4px;margin-bottom:8px;font-size:1.4rem;cursor:pointer;}
+.star-pick{transition:transform .1s;user-select:none;}
+.star-pick:hover{transform:scale(1.2);}
+.review-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;outline:none;resize:none;min-height:70px;transition:border-color .2s;}
+.review-input:focus{border-color:var(--accent);}
+.review-submit{margin-top:7px;padding:9px 18px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;transition:all .2s;;position:sticky;bottom:0;z-index:2;}
+.review-submit:hover{filter:brightness(1.1);}
+
+/* ── ADMIN ── */
+.admin-view{flex:1;overflow-y:auto;padding:24px;display:none;-webkit-overflow-scrolling:touch;}
+.admin-view.visible{display:block;}
+.admin-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;margin-bottom:4px;line-height:1.2;}
+.admin-nav-tabs{display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;}
+.admin-nav-tab{padding:8px 16px;border:none;background:none;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.admin-nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.admin-section{display:none;}.admin-section.active{display:block;}
+.user-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.user-table th{text-align:left;padding:8px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-size:.75rem;text-transform:uppercase;}
+.user-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.user-table tr:hover td{background:var(--surface2);}
+.user-avatar-sm{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.user-method-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:700;}
+.badge-email{background:#1a3a5c;color:#60b4ff;}
+.badge-google{background:#3a1a1a;color:#ff6b6b;}
+.users-stats{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.users-stat-box{background:var(--surface2);border-radius:12px;padding:12px 16px;flex:1;min-width:100px;text-align:center;}
+.users-stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent);}
+.users-stat-label{font-size:.72rem;color:var(--muted);margin-top:2px;}
+.admin-subtitle{color:var(--muted);font-size:.88rem;margin-bottom:24px;}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.admin-form-card{background:var(--surface);border-radius:18px;padding:22px;border:1px solid var(--border);}
+.admin-form-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.form-group{margin-bottom:12px;}
+.form-label{display:block;font-size:.74rem;color:var(--muted);font-weight:600;margin-bottom:5px;letter-spacing:.4px;text-transform:uppercase;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.form-submit{width:100%;padding:11px;background:var(--accent);color:#000;border:none;border-radius:11px;font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem;cursor:pointer;margin-top:4px;transition:all .2s;}
+.form-submit:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.form-cancel{width:100%;padding:10px;background:var(--surface2);color:var(--text);border:none;border-radius:11px;font-family:'Syne',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;margin-top:6px;transition:all .2s;}
+.form-cancel:hover{background:var(--border);}
+
+/* photo upload */
+.photo-upload{border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;position:relative;}
+.photo-upload:hover,.photo-upload.drag{border-color:var(--accent);}
+.photo-upload input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.photo-preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.photo-thumb{width:64px;height:64px;border-radius:8px;object-fit:cover;border:2px solid var(--border);}
+.photo-thumb-wrap{position:relative;}
+.photo-remove{position:absolute;top:-6px;right:-6px;background:var(--accent2);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+.admin-table-card{background:var(--surface);border-radius:18px;padding:22px;border:1px solid var(--border);grid-column:span 2;}
+.admin-table{width:100%;border-collapse:collapse;margin-top:12px;}
+.admin-table th{text-align:left;font-family:'Syne',sans-serif;font-weight:700;font-size:.74rem;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;padding:0 12px 10px;border-bottom:1px solid var(--border);}
+.admin-table td{padding:12px;font-size:.84rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+.admin-table tr:last-child td{border-bottom:none;}
+.admin-table tr:hover td{background:var(--surface2);}
+.tbl-btn{padding:5px 11px;border-radius:7px;font-family:'Syne',sans-serif;font-weight:600;font-size:.73rem;cursor:pointer;border:none;transition:all .15s;}
+.tbl-btn.edit{background:var(--surface2);color:var(--text);}
+.tbl-btn.delete{background:rgba(255,107,53,.15);color:var(--accent2);}
+.tbl-btn:hover{filter:brightness(1.2);}
+
+/* ── AUTH WALL ── */
+.auth-wall{position:fixed;inset:0;background:var(--bg);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-box{background:var(--surface);border-radius:24px;padding:36px;width:100%;max-width:380px;border:1px solid var(--border);box-shadow:var(--shadow);}
+.auth-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;text-align:center;margin-bottom:6px;}
+.auth-logo span{color:var(--accent);}
+.auth-sub{text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:28px;}
+.auth-error{background:rgba(255,107,53,.15);color:var(--accent2);border-radius:9px;padding:9px 13px;font-size:.82rem;margin-bottom:12px;display:none;}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:.78rem;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.google-btn{width:100%;padding:11px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:11px;font-family:'Syne',sans-serif;font-weight:600;font-size:.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .2s;}
+.google-btn:hover{border-color:var(--accent);}
+.auth-wall.hidden{display:none;}
+/* ── USER AUTH MODAL ── */
+.user-auth-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:8000;display:flex;align-items:flex-end;justify-content:center;padding:0;}
+.user-auth-modal.hidden{display:none;}
+.user-auth-box{background:var(--surface);border-radius:24px 24px 0 0;padding:28px 24px 0;width:100%;max-width:480px;border-top:1px solid var(--border);box-shadow:0 -8px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;max-height:90vh;}
+.auth-tabs{display:flex;background:var(--bg);border-radius:10px;padding:3px;margin-bottom:20px;}
+.auth-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(100px + env(safe-area-inset-bottom));flex:1;}
+.auth-tab{flex:1;padding:8px;border:none;background:transparent;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;border-radius:8px;cursor:pointer;transition:all .2s;}
+.auth-tab.active{background:var(--surface);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--border);}
+.user-menu{position:absolute;top:58px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:4000;box-shadow:var(--shadow);min-width:200px;display:none;}
+.user-menu.open{display:block;}
+.user-menu-item{padding:10px 14px;border-radius:9px;font-size:.84rem;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s;}
+.user-menu-item:hover{background:var(--surface2);}
+.auth-note{text-align:center;font-size:.75rem;color:var(--muted);margin-top:14px;}
+
+/* ── POPUP ── */
+.leaflet-popup-content-wrapper{background:var(--surface)!important;color:var(--text)!important;border-radius:13px!important;border:1px solid var(--border)!important;box-shadow:var(--shadow)!important;padding:0!important;}
+.leaflet-popup-content{margin:0!important;}
+.leaflet-popup-tip{background:var(--surface)!important;}
+.popup-inner{padding:12px 14px;min-width:180px;}
+.popup-name{font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;margin-bottom:3px;}
+.popup-cat{font-size:.72rem;color:var(--muted);margin-bottom:7px;}
+.popup-btn{width:100%;padding:7px;background:var(--accent);color:#000;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer;transition:all .2s;}
+.popup-btn:hover{filter:brightness(1.1);}
+
+/* ── STATS GRID ── */
+.stat-box{background:var(--surface);border-radius:10px;padding:11px;text-align:center;}
+
+/* ── PLACE PICKER ── */
+.place-search-wrap{position:relative;margin-bottom:14px;}
+.place-search-input{width:100%;background:var(--bg);border:2px solid var(--accent);border-radius:10px;padding:11px 14px 11px 40px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92rem;outline:none;}
+.place-search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none;}
+.place-search-input::placeholder{color:var(--muted);}
+.pac-container{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:0 8px 24px rgba(0,0,0,.4)!important;font-family:'DM Sans',sans-serif!important;margin-top:4px!important;}
+.pac-item{padding:9px 14px!important;color:var(--text)!important;border-top:1px solid var(--border)!important;cursor:pointer!important;font-size:.85rem!important;}
+.pac-item:hover{background:var(--surface2)!important;}
+.pac-item-query{color:var(--text)!important;font-weight:600!important;}
+.pac-matched{color:var(--accent)!important;}
+#adminPickerMap{width:100%;height:200px;border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden;}
+.fetched-info{background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;display:none;}
+.fetched-row{display:flex;align-items:flex-start;gap:8px;font-size:.82rem;margin-bottom:6px;color:var(--muted);line-height:1.4;}
+.fetched-row strong{color:var(--text);}
+.fetched-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(61,255,160,.1);color:var(--green);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:700;}
+.stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;}
+.stat-lbl{font-size:.7rem;color:var(--muted);margin-top:2px;}
+
+/* ── MISC ── */
+.no-stores{padding:36px 18px;text-align:center;color:var(--muted);}
+.no-stores-icon{font-size:2.3rem;margin-bottom:10px;}
+.no-stores h3{font-family:'Syne',sans-serif;font-weight:700;margin-bottom:5px;color:var(--text);}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:.83rem;padding:9px 20px;border-radius:30px;z-index:10001;opacity:0;transition:all .3s;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.user-view.hidden{display:none!important;}
+.loading{display:flex;align-items:center;justify-content:center;padding:32px;color:var(--muted);font-size:.85rem;gap:8px;}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH WALL ══ -->
+<!-- ══ ADMIN AUTH WALL ══ -->
+<div class="auth-wall hidden" id="authWall">
+  <div class="auth-box">
+    <div class="auth-logo">Near<span>Shop Drive</span></div>
+    <div class="auth-sub">🔐 Connexion administrateur</div>
+    <div class="auth-error" id="authError"></div>
+    <div class="form-group">
+      <label class="form-label">Email admin</label>
+      <input class="form-input" id="authEmail" type="email" placeholder="admin@nearshop.app">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input class="form-input" id="authPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()">
+    </div>
+    <button class="form-submit" onclick="loginAdmin()">🔐 Accéder à l'administration</button>
+    <button class="form-cancel" onclick="document.getElementById('authWall').classList.add('hidden')" style="margin-top:8px">Annuler</button>
+    <div class="auth-note" style="margin-top:14px">⚠️ Accès réservé à l'administrateur uniquement.</div>
+  </div>
+</div>
+
+<!-- ══ MOBILE USER MENU ══ -->
+<div class="city-modal hidden" id="mobileUserMenu">
+  <div class="city-box" style="padding-bottom:calc(100px + env(safe-area-inset-bottom));">
+    <!-- En-tête compte -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+      <div id="mobileMenuAvatar" style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">?</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="mobileMenuName">Mon compte</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="mobileMenuEmail"></div>
+      </div>
+      <button onclick="closeMobileUserMenu()" style="background:var(--surface2);border:none;border-radius:50%;width:32px;height:32px;color:var(--muted);cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>
+    </div>
+    <!-- Bouton déconnexion bien visible -->
+    <button onclick="doLogout();closeMobileUserMenu()" style="width:100%;padding:15px;background:#e53935;color:#fff;border:none;border-radius:14px;font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">
+      🚪 Se déconnecter
+    </button>
+  </div>
+</div>
+
+<!-- ══ CITY SEARCH MODAL ══ -->
+<div class="city-modal hidden" id="cityModal">
+  <div class="city-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem">🗺️ Choisir une ville</div>
+      <button onclick="closeCitySearch()" style="background:var(--surface2);border:none;border-radius:50%;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
+    </div>
+    <div class="city-search-wrap">
+      <span class="city-input-icon">🔍</span>
+      <input class="city-input" id="cityInput" type="text" placeholder="Paris, Liège, Bruxelles..." autocomplete="off" oninput="searchCity(this.value)">
+    </div>
+    <div class="city-scroll">
+      <ul class="city-results" id="cityResults"></ul>
+      <div class="city-or">— ou —</div>
+      <div class="city-map-hint" onclick="enableMapClick()">
+        📌 Cliquer sur la carte pour choisir un endroit
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ USER AUTH MODAL ══ -->
+<div class="user-auth-modal hidden" id="userAuthModal">
+  <div class="user-auth-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style='font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem">👤 Mon compte</div>
+      <button onclick="closeUserAuth()" style="background:var(--surface2);border:none;border-radius:50%;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>
+    </div>
+    <!-- Onglets Connexion / Inscription -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Se connecter</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">S'inscrire</button>
+    </div>
+    <div class="auth-error" id="userAuthError"></div>
+    <div class="auth-scroll">
+    <!-- CONNEXION -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="userEmail" type="email" placeholder="mon@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input class="form-input" id="userPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginUser()">
+      </div>
+      <button class="form-submit" onclick="loginUser()">✅ Se connecter</button>
+      <div class="auth-divider">ou</div>
+      <button class="google-btn" onclick="loginUserGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.1 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.7-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.3 0-11.6-4.2-13.5-10l-7.9 6C6.6 42.6 14.6 48 24 48z"/></svg>
+        Continuer avec Google
+      </button>
+    </div>
+
+    <!-- INSCRIPTION -->
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Prénom / Pseudo</label>
+        <input class="form-input" id="regName" type="text" placeholder="Mon pseudo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="regEmail" type="email" placeholder="mon@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input class="form-input" id="regPwd" type="password" placeholder="Min. 6 caractères" onkeydown="if(event.key==='Enter')registerUser()">
+      </div>
+      <button class="form-submit" onclick="registerUser()">🚀 Créer mon compte</button>
+      <div class="auth-divider">ou</div>
+      <button class="google-btn" onclick="loginUserGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.1 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.7-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.3 0-11.6-4.2-13.5-10l-7.9 6C6.6 42.6 14.6 48 24 48z"/></svg>
+        Continuer avec Google
+      </button>
+    </div>
+  </div><!-- /auth-scroll -->
+  </div>
+</div>
+
+<!-- ── MENU UTILISATEUR ── -->
+<div class="user-menu" id="userMenu">
+  <div style="padding:10px 14px 8px;border-bottom:1px solid var(--border);margin-bottom:4px">
+    <div style="font-weight:700;font-size:.88rem" id="menuUserName">–</div>
+    <div style="font-size:.75rem;color:var(--muted)" id="menuUserEmail">–</div>
+  </div>
+  <div class="user-menu-item" onclick="doLogout()">🚪 <span>Se déconnecter</span></div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo" style="cursor:pointer" onclick="window.open('index.html','_self')"><div class="logo-dot"></div>Near<span>Shop Drive</span></div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tabExplore" onclick="switchView('user')">🗺️ <span data-i18n="explore">Explorer</span></button>
+    <button class="nav-tab" id="tabAdmin" onclick="requireAdmin()">⚙️ Admin</button>
+  </div>
+
+  <div class="header-right">
+    <button class="lang-btn" onclick="cycleLang()">🌍 <span id="langLabel">FR</span></button>
+    <button class="icon-btn" onclick="toggleTheme()" title="Thème">🌗</button>
+    <button class="locate-btn" onclick="locateUser(false)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      <span data-i18n="locate">Me localiser</span>
+    </button>
+    <button class="locate-btn" onclick="openCitySearch()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);" title="Chercher une ville">
+      🔍 <span>Autre ville</span>
+    </button>
+    <!-- Utilisateur connecté : avatar / bouton compte -->
+    <div id="userAvatarBtn" style="display:none" onclick="toggleUserMenu()"></div>
+    <button class="icon-btn" id="loginBtn" onclick="openUserAuth()" title="Se connecter" style="font-size:.75rem;padding:0 10px;width:auto;gap:4px">👤 <span style='font-family:'Syne',sans-serif;font-weight:700">Connexion</span></button>
+  </div>
+</header>
+
+<!-- ══ MOBILE BOTTOM NAV ══ -->
+<nav class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-btn active" id="mnavExplore" onclick="mobileNav('explore')">
+    <span class="mobile-nav-icon">🗺️</span>
+    <span>Explorer</span>
+  </button>
+  <button class="mobile-nav-btn" id="mnavList" onclick="mobileNav('list')">
+    <span class="mobile-nav-icon">📋</span>
+    <span>Magasins</span>
+  </button>
+  <!-- Bouton localisation avec mini-menu -->
+  <button class="mobile-nav-btn" id="mnavLocate" onclick="toggleLocateMenu()">
+    <span class="mobile-nav-icon">📍</span>
+    <span>Localiser</span>
+  </button>
+  <!-- Bouton connexion utilisateur -->
+  <button class="mobile-nav-btn" id="mnavUser" onclick="mobileNav('user')">
+    <span class="mobile-nav-icon" id="mnavUserIcon">👤</span>
+    <span id="mnavUserLabel">Connexion</span>
+  </button>
+  <button class="mobile-nav-btn" id="mnavAdmin" onclick="requireAdmin()">
+    <span class="mobile-nav-icon">⚙️</span>
+    <span>Admin</span>
+  </button>
+</nav>
+
+<!-- Mini-menu localisation -->
+<div class="locate-menu hidden" id="locateMenu">
+  <button class="locate-menu-item" onclick="locateUser(false);closeLocateMenu()">
+    <span>📍</span> Ma position GPS
+  </button>
+  <button class="locate-menu-item" onclick="openCitySearch();closeLocateMenu()">
+    <span>🔍</span> Chercher une ville
+  </button>
+</div>
+
+<!-- ══ MOBILE PANEL (liste magasins) ══ -->
+<div class="mobile-panel" id="mobilePanel">
+  <!-- Barre supérieure : titre + bouton fermer -->
+  <div class="mobile-panel-topbar">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:1rem">📋</span>
+      <span style='font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem">Magasins proches</span>
+      <span class="count-badge" id="countBadgeMobile">0</span>
+    </div>
+    <button class="panel-close-btn" id="panelCloseBtn" onclick="closeMobilePanel()">✕</button>
+  </div>
+  <!-- Recherche + filtres -->
+  <div style="padding:0 14px 12px;flex-shrink:0;">
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInputMobile" placeholder="Nom, adresse..." oninput="syncSearch(this)">
+    </div>
+    <div class="filter-row" id="filterRowMobile"></div>
+  </div>
+  <!-- Liste -->
+  <div class="mobile-panel-content">
+    <div class="store-list" id="storeListMobile" style="padding:0;"></div>
+  </div>
+</div>
+
+<!-- ══ USER VIEW ══ -->
+<div class="app-body user-view" id="userView">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        <span data-i18n="nearbyStores">Magasins proches</span>
+        <span class="count-badge" id="countBadge">0</span>
+      </div>
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="Nom, adresse..." oninput="renderStores()">
+      </div>
+      <div class="filter-row" id="filterRow"></div>
+    </div>
+    <div class="store-list" id="storeList"><div class="loading"><div class="spinner"></div> Chargement...</div></div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="radius-info">
+      <div class="radius-label">📍 Rayon de recherche</div>
+      <div class="radius-btns">
+        <button class="radius-btn" onclick="setRadius(1)">1 km</button>
+        <button class="radius-btn" onclick="setRadius(2)">2 km</button>
+        <button class="radius-btn active" id="radiusBtn5" onclick="setRadius(5)">5 km</button>
+        <button class="radius-btn" onclick="setRadius(10)">10 km</button>
+        <button class="radius-btn" onclick="setRadius(20)">20 km</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN VIEW ══ -->
+<div class="app-body admin-view" id="adminView">
+  <div style="max-width:1100px;margin:0 auto;width:100%;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div class="admin-title">⚙️ Administration</div>
+    </div>
+    <div class="admin-subtitle">Gérez vos magasins et consultez les utilisateurs inscrits.</div>
+
+    <!-- Onglets admin -->
+    <div class="admin-nav-tabs">
+      <button class="admin-nav-tab active" onclick="switchAdminTab('stores')">🏪 Magasins</button>
+      <button class="admin-nav-tab" onclick="switchAdminTab('users')" id="usersTabBtn">👥 Utilisateurs <span id="usersCountBadge" style="background:var(--accent);color:#000;border-radius:20px;padding:1px 7px;font-size:.7rem;margin-left:4px;"></span></button>
+    </div>
+
+    <!-- Section Magasins -->
+    <div class="admin-section active" id="adminSectionStores">
+    <div class="admin-grid">
+      <!-- FORM -->
+      <div class="admin-form-card">
+        <div class="admin-form-title">➕ <span id="formTitle">Ajouter un magasin</span></div>
+
+        <!-- GOOGLE PLACE SEARCH -->
+        <div class="place-search-wrap">
+          <span class="place-search-icon">🔍</span>
+          <input class="place-search-input" id="placeSearch" placeholder="Rechercher un commerce sur Google Maps...">
+        </div>
+
+        <!-- MINI MAP PICKER -->
+        <div id="adminPickerMap"></div>
+        <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-bottom:10px;margin-top:-6px">
+          👆 Clique sur la carte pour sélectionner un commerce automatiquement
+        </div>
+
+        <!-- INFOS RÉCUPÉRÉES AUTOMATIQUEMENT -->
+        <div class="fetched-info" id="fetchedInfo">
+          <div style='font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:10px;color:var(--text)">📥 Informations récupérées depuis Google Maps</div>
+          <div class="fetched-row" id="fi-row-name" style="display:none">🏪 <span style="color:var(--muted);min-width:80px">Nom</span><strong id="fi-name"></strong></div>
+          <div class="fetched-row" id="fi-row-address" style="display:none">📍 <span style="color:var(--muted);min-width:80px">Adresse</span><strong id="fi-address"></strong></div>
+          <div class="fetched-row" id="fi-row-phone" style="display:none">📞 <span style="color:var(--muted);min-width:80px">Téléphone</span><strong id="fi-phone"></strong></div>
+          <div class="fetched-row" id="fi-row-website" style="display:none">🌐 <span style="color:var(--muted);min-width:80px">Site web</span><strong id="fi-website"></strong></div>
+          <div class="fetched-row" id="fi-row-rating" style="display:none">⭐ <span style="color:var(--muted);min-width:80px">Note Google</span><strong id="fi-rating"></strong></div>
+          <div class="fetched-row" id="fi-row-hours" style="display:none">🕐 <span style="color:var(--muted);min-width:80px">Horaires</span><strong id="fi-hours"></strong></div>
+          <div class="fetched-row" id="fi-row-status" style="display:none">🟢 <span style="color:var(--muted);min-width:80px">Statut</span><strong id="fi-status"></strong></div>
+          <div class="fetched-row" id="fi-row-cat" style="display:none">🏷️ <span style="color:var(--muted);min-width:80px">Catégorie</span><strong id="fi-cat"></strong></div>
+          <div class="fetched-row" id="fi-row-coords" style="display:none">📌 <span style="color:var(--muted);min-width:80px">Coordonnées</span><strong id="fi-coords"></strong></div>
+          <div id="fi-hours-detail" style="display:none;background:var(--surface);border-radius:8px;padding:10px;margin-top:6px;font-size:.78rem;line-height:1.8;color:var(--muted)"></div>
+          <div style="margin-top:8px"><span class="fetched-badge">✅ Infos récupérées automatiquement</span></div>
+        </div>
+
+        <!-- CHAMPS (pré-remplis automatiquement, modifiables) -->
+        <div class="form-group">
+          <label class="form-label" data-i18n="storeName">Nom du magasin</label>
+          <input class="form-input" id="f-name" placeholder="Ex: Boulangerie Martin">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" data-i18n="category">Catégorie</label>
+            <select class="form-select" id="f-cat">
+              <option>🍞 Boulangerie</option><option>🛒 Supermarché</option>
+              <option>💊 Pharmacie</option><option>👗 Vêtements</option>
+              <option>🍕 Restaurant</option><option>☕ Café</option>
+              <option>🔧 Bricolage</option><option>📚 Librairie</option>
+              <option>🌸 Fleuriste</option><option>🚗 3anout Drive</option><option>🏪 Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="phone">Téléphone</label>
+            <input class="form-input" id="f-phone" placeholder="+32 2 000 00 00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">📱 WhatsApp <span style="font-weight:400;color:var(--muted);font-size:.78rem">(numéro international)</span></label>
+            <input class="form-input" id="f-whatsapp" placeholder="+32 470 00 00 00" type="tel">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="address">Adresse</label>
+          <input class="form-input" id="f-address" placeholder="Rue, Numéro, Ville">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Latitude</label>
+            <input class="form-input" id="f-lat" placeholder="50.8503" type="number" step="any">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude</label>
+            <input class="form-input" id="f-lng" placeholder="4.3517" type="number" step="any">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="hours">Horaires</label>
+          <input class="form-input" id="f-hours" placeholder="Lun-Sam : 08h–19h">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="status">Statut</label>
+          <select class="form-select" id="f-status">
+            <option value="open">🟢 Ouvert</option>
+            <option value="closed">🔴 Fermé</option>
+          </select>
+        </div>
+
+        <!-- PHOTOS -->
+        <div class="form-group">
+          <label class="form-label">📷 Photos</label>
+          <div class="photo-upload" id="photoZone">
+            <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoSelect(event)">
+            <div style="font-size:.85rem;color:var(--muted)">Glissez des photos ici ou cliquez</div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:4px">JPG, PNG — max 5 Mo chacune</div>
+          </div>
+          <div class="photo-preview" id="photoPreview"></div>
+        </div>
+
+        <input type="hidden" id="f-id">
+        <input type="hidden" id="f-existingPhotos" value="[]">
+        <button class="form-submit" onclick="submitStore()">💾 Enregistrer</button>
+        <button class="form-cancel" onclick="resetForm()">✖ Annuler</button>
+      </div>
+
+      <!-- STATS -->
+      <div class="admin-form-card" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="admin-form-title">📊 Statistiques</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="statsGrid"></div>
+        <div style="background:var(--bg);border-radius:11px;padding:13px;font-size:.82rem;color:var(--muted);line-height:1.65;margin-top:auto;">
+          <strong style="color:var(--text);">💡 Latitude / Longitude</strong><br>
+          Google Maps → clic droit → coordonnées.<br><br>
+          <strong style="color:var(--text);">📷 Photos</strong><br>
+          Ajoutez jusqu'à 5 photos par magasin.<br><br>
+          <strong style="color:var(--text);">🔄 Temps réel</strong><br>
+          Les modifications sont visibles instantanément.
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="admin-table-card">
+        <div class="admin-form-title">📋 Liste des magasins</div>
+        <table class="admin-table">
+          <thead><tr>
+            <th></th><th data-i18n="storeName">Magasin</th>
+            <th data-i18n="address">Adresse</th><th data-i18n="status">Statut</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    </div><!-- /adminSectionStores -->
+
+    <!-- Section Utilisateurs -->
+    <div class="admin-section" id="adminSectionUsers">
+      <div class="users-stats">
+        <div class="users-stat-box"><div class="users-stat-num" id="statTotal">–</div><div class="users-stat-label">Total inscrits</div></div>
+        <div class="users-stat-box"><div class="users-stat-num" id="statEmail">–</div><div class="users-stat-label">Via email</div></div>
+        <div class="users-stat-box"><div class="users-stat-num" id="statGoogle">–</div><div class="users-stat-label">Via Google</div></div>
+        <div class="users-stat-box"><div class="users-stat-num" id="statToday">–</div><div class="users-stat-label">Aujourd'hui</div></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div class="admin-form-title" style="margin:0">👥 Comptes inscrits</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="loadUsersFromFirestore()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.78rem;">🔄 Actualiser</button>
+          <button onclick="exportAllToGSheet()" style="background:#25D366;border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.78rem;font-weight:700;" id="exportGSheetBtn">📊 Exporter vers Sheets</button>
+          <button onclick="toggleGSheetConfig()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.78rem;" title="Configurer Google Sheets">⚙️</button>
+        </div>
+      </div>
+      <!-- Config Google Sheet URL -->
+      <div id="gsheetConfigBox" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:8px;">🔗 URL Google Apps Script</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px;">Collez l'URL de déploiement de votre Apps Script pour synchroniser automatiquement les inscriptions.</div>
+        <div style="display:flex;gap:8px;">
+          <input id="gsheetUrlInput" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;font-size:.78rem;" value="">
+          <button onclick="saveGSheetUrl()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:.78rem;white-space:nowrap;">💾 Sauver</button>
+        </div>
+        <div id="gsheetStatus" style="margin-top:6px;font-size:.75rem;color:var(--muted);"></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="user-table" id="usersTable">
+          <thead><tr>
+            <th></th>
+            <th>Nom / Pseudo</th>
+            <th>Email</th>
+            <th>Méthode</th>
+            <th>Inscription</th>
+          </tr></thead>
+          <tbody id="usersTableBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;">Cliquez sur l'onglet pour charger...</td></tr></tbody>
+        </table>
+      </div>
+    </div><!-- /adminSectionUsers -->
+
+  </div>
+</div>
+
+<!-- ══ STORE MODAL ══ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-img" id="modalImg"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <div>
+          <div class="modal-name" id="modalName"></div>
+          <div class="modal-cat" id="modalCat"></div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-info-grid">
+        <div class="modal-info-row"><div class="modal-info-icon">📍</div><div><div class="modal-info-label" data-i18n="address">Adresse</div><div class="modal-info-value" id="modalAddress"></div></div></div>
+        <div class="modal-info-row"><div class="modal-info-icon">🕐</div><div><div class="modal-info-label" data-i18n="hours">Horaires</div><div class="modal-info-value" id="modalHours"></div></div></div>
+        <div class="modal-info-row" id="modalPhoneRow"><div class="modal-info-icon">📞</div><div><div class="modal-info-label" data-i18n="phone">Téléphone</div><div class="modal-info-value" id="modalPhone"></div></div></div>
+        <div class="modal-info-row" id="modalWhatsappRow" style="display:none"><div class="modal-info-icon">💬</div><div><div class="modal-info-label">WhatsApp</div><div class="modal-info-value" id="modalWhatsapp"></div></div></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="modalDirections">🗺️ <span data-i18n="directions">Itinéraire</span></button>
+        <button class="btn-share" id="modalShare">🔗 <span data-i18n="share">Partager</span></button>
+        <button class="btn-secondary" onclick="closeModal()">✕</button>
+      </div>
+      <!-- REVIEWS -->
+      <div class="reviews-section">
+        <div class="reviews-title">
+          <span>⭐ <span data-i18n="reviews">Avis</span></span>
+          <div class="avg-rating"><span class="avg-num" id="avgNum">–</span><span class="stars" id="avgStars"></span><span style="font-size:.75rem;color:var(--muted);margin-left:4px" id="reviewCount"></span></div>
+        </div>
+        <div class="review-list" id="reviewList"></div>
+        <div class="add-review">
+          <div class="add-review-title" data-i18n="addReview">Laisser un avis</div>
+          <div class="star-picker" id="starPicker">
+            <span class="star-pick" data-v="1" onclick="setRating(1)">☆</span>
+            <span class="star-pick" data-v="2" onclick="setRating(2)">☆</span>
+            <span class="star-pick" data-v="3" onclick="setRating(3)">☆</span>
+            <span class="star-pick" data-v="4" onclick="setRating(4)">☆</span>
+            <span class="star-pick" data-v="5" onclick="setRating(5)">☆</span>
+          </div>
+          <input class="form-input" id="reviewAuthor" placeholder="Votre prénom" style="margin-bottom:7px">
+          <textarea class="review-input" id="reviewText" placeholder="Votre commentaire..."></textarea>
+          <button class="review-submit" onclick="submitReview()">✉️ Publier</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════
+//  TRANSLATIONS
+// ════════════════════════════════
+const LANGS = ['fr','nl','en'];
+let langIdx = 0;
+const T = {
+  fr:{ explore:'Explorer', locate:'Me localiser', nearbyStores:'Magasins proches', radius:'Rayon',
+       storeManagement:'Gestion des magasins', adminSubtitle:'Ajoutez, modifiez ou supprimez les magasins.',
+       storeName:'Nom du magasin', category:'Catégorie', phone:'Téléphone', address:'Adresse',
+       hours:'Horaires', status:'Statut', directions:'Itinéraire', share:'Partager',
+       reviews:'Avis', addReview:'Laisser un avis', open:'Ouvert', closed:'Fermé' },
+  nl:{ explore:'Verkennen', locate:'Mij lokaliseren', nearbyStores:'Nabijgelegen winkels', radius:'Straal',
+       storeManagement:'Winkelbeheer', adminSubtitle:'Voeg winkels toe, bewerk of verwijder ze.',
+       storeName:'Winkelnaam', category:'Categorie', phone:'Telefoon', address:'Adres',
+       hours:'Openingstijden', status:'Status', directions:'Routebeschrijving', share:'Delen',
+       reviews:'Beoordelingen', addReview:'Een beoordeling achterlaten', open:'Open', closed:'Gesloten' },
+  en:{ explore:'Explore', locate:'Locate me', nearbyStores:'Nearby stores', radius:'Radius',
+       storeManagement:'Store management', adminSubtitle:'Add, edit or delete stores.',
+       storeName:'Store name', category:'Category', phone:'Phone', address:'Address',
+       hours:'Hours', status:'Status', directions:'Directions', share:'Share',
+       reviews:'Reviews', addReview:'Leave a review', open:'Open', closed:'Closed' }
+};
+
+function applyLang() {
+  const l = LANGS[langIdx];
+  document.getElementById('langLabel').textContent = l.toUpperCase();
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (T[l][k]) el.textContent = T[l][k];
+  });
+}
+
+function cycleLang() {
+  langIdx = (langIdx+1) % LANGS.length;
+  applyLang();
+}
+
+// ════════════════════════════════
+//  THEME
+// ════════════════════════════════
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+}
+
+// ════════════════════════════════
+//  STATE
+// ════════════════════════════════
+let stores = [];
+let map, userMarker, radiusCircle;
+let mapMarkers = [];
+let userLat = 50.8503, userLng = 4.3517;
+let catFilter = 'all';
+let favFilter = false; // filtre "Mes favoris"
+
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem('nearshop_favs') || '[]'); }
+  catch(e) { return []; }
+}
+function isFav(id) { return getFavs().includes(id); }
+function toggleFav(id, e) {
+  if(e){ e.stopPropagation(); e.preventDefault(); }
+  if(!currentUser){ openUserAuth(); showToast('👤 Connectez-vous pour sauvegarder des favoris'); return; }
+  const favs = getFavs();
+  const idx  = favs.indexOf(id);
+  if(idx === -1){
+    favs.push(id);
+    showToast('❤️ Ajouté aux favoris !');
+  } else {
+    favs.splice(idx, 1);
+    showToast('💔 Retiré des favoris');
+  }
+  localStorage.setItem('nearshop_favs', JSON.stringify(favs));
+  renderStores();
+  if(mobilePanelOpen) renderStoresMobile();
+}
+function toggleFavFilter() {
+  favFilter = !favFilter;
+  renderStores();
+  if(mobilePanelOpen) renderStoresMobile();
+}
+let searchRadius = 5; // km — modifiable par l'utilisateur
+let activeStoreId = null;
+let currentRating = 0;
+let pendingPhotos = []; // File objects to upload
+let fb = null;
+let currentUser = null;
+let isAdmin = false;
+// ⚠️ EMAIL ADMIN AUTORISÉ — changer avec votre email
+const ADMIN_EMAIL = 'lahouchki@gmail.com';
+
+// ════════════════════════════════
+//  FIREBASE INIT
+// ════════════════════════════════
+function initFirebase() {
+  if (!window._fb) { setTimeout(initFirebase, 100); return; }
+  fb = window._fb;
+
+  fb.onAuthStateChanged(fb.auth, user => {
+    currentUser = user;
+    isAdmin = !!(user && user.email === ADMIN_EMAIL);
+    updateUserUI(user);
+    if (!isAdmin && document.getElementById('adminView').classList.contains('visible')) {
+      switchView('user');
+    }
+  });
+
+  // Écoute temps réel des magasins
+  fb.onSnapshot(fb.collection(fb.db, 'stores'), snap => {
+    stores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderStores();
+    renderAdminTable();
+    updateAdminStats();
+  }, err => {
+    console.error('Firestore error:', err);
+    // Afficher quand même la carte vide
+    renderStores();
+  });
+}
+
+// ════════════════════════════════
+//  MAP
+// ════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView([userLat, userLng], 14);
+  // Style Google Maps-like (couleurs réalistes)
+  L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0','mt1','mt2','mt3'],
+    attribution: '&copy; Google Maps'
+  }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  updateUserMarker(userLat, userLng);
+}
+
+// ════════════════════════════════
+//  ADMIN PLACE PICKER
+// ════════════════════════════════
+let adminPickerMap = null;
+let adminPickerMarker = null;
+
+function initAdminMap() {
+  if (adminPickerMap) return;
+  adminPickerMap = L.map('adminPickerMap', { zoomControl: true }).setView([50.8503, 4.3517], 13);
+  L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
+  }).addTo(adminPickerMap);
+
+  // Clic sur la mini-map → cherche le commerce le plus proche via Google Places
+  adminPickerMap.on('click', function(e) {
+    placeAdminMarker(e.latlng.lat, e.latlng.lng);
+    showToast('🔍 Recherche du commerce en cours...');
+    fetchPlaceFromCoords(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function placeAdminMarker(lat, lng) {
+  if (adminPickerMarker) adminPickerMap.removeLayer(adminPickerMarker);
+  adminPickerMarker = L.marker([lat, lng], { icon: L.divIcon({
+    html: `<div style="width:26px;height:26px;background:#f0c040;border-radius:50%;border:3px solid #fff;box-shadow:0 0 14px rgba(240,192,64,.9);animation:pulse 1.5s infinite"></div>`,
+    className:'', iconSize:[26,26], iconAnchor:[13,13]
+  })}).addTo(adminPickerMap);
+  document.getElementById('f-lat').value = lat.toFixed(6);
+  document.getElementById('f-lng').value = lng.toFixed(6);
+}
+
+function fetchPlaceFromCoords(lat, lng) {
+  if (!window.google || !window.google.maps) { showToast('⚠️ Google Maps non chargé'); return; }
+
+  // Utilise PlacesService pour trouver le commerce le plus proche du clic
+  const googleLatLng = new google.maps.LatLng(lat, lng);
+
+  // On a besoin d'un div DOM pour PlacesService
+  const svc = new google.maps.places.PlacesService(document.createElement('div'));
+
+  // 1. Recherche du commerce le plus proche (rayon 30m)
+  svc.nearbySearch({
+    location: googleLatLng,
+    radius: 50,
+    type: ['establishment']
+  }, (results, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+      // Prend le résultat le plus proche
+      const closest = results[0];
+      // Récupère tous les détails du lieu
+      svc.getDetails({
+        placeId: closest.place_id,
+        fields: [
+          'place_id','name','formatted_address','geometry',
+          'formatted_phone_number','international_phone_number',
+          'opening_hours','current_opening_hours',
+          'business_status','website','rating','user_ratings_total',
+          'price_level','types','vicinity'
+        ]
+      }, (place, detailStatus) => {
+        if (detailStatus === google.maps.places.PlacesServiceStatus.OK) {
+          fillFormFromPlace(place);
+          // Recentrer le marqueur sur la position exacte du commerce
+          const pLat = place.geometry.location.lat();
+          const pLng = place.geometry.location.lng();
+          placeAdminMarker(pLat, pLng);
+          adminPickerMap.setView([pLat, pLng], 18);
+          showToast('✅ Commerce trouvé et formulaire rempli !');
+        } else {
+          // Détails non disponibles → fallback adresse simple
+          reverseGeocodeSimple(lat, lng);
+        }
+      });
+    } else {
+      // Aucun commerce trouvé → fallback adresse simple
+      reverseGeocodeSimple(lat, lng);
+      showToast('📍 Aucun commerce trouvé ici — adresse récupérée');
+    }
+  });
+}
+
+// Remplir le formulaire depuis un objet place Google
+function fillFormFromPlace(place) {
+  const lat = place.geometry.location.lat();
+  const lng = place.geometry.location.lng();
+  const types = place.types || [];
+
+  // Champs formulaire
+  if (place.name)                    document.getElementById('f-name').value    = place.name;
+  if (place.formatted_address)       document.getElementById('f-address').value = place.formatted_address;
+  else if (place.vicinity)           document.getElementById('f-address').value = place.vicinity;
+  if (place.formatted_phone_number)  document.getElementById('f-phone').value   = place.formatted_phone_number;
+  else if (place.international_phone_number) document.getElementById('f-phone').value = place.international_phone_number;
+
+  // Horaires
+  const oh = place.opening_hours || place.current_opening_hours;
+  if (oh?.weekday_text?.length) {
+    document.getElementById('f-hours').value = oh.weekday_text.join(' | ');
+  }
+
+  // Statut
+  if (oh) { try { document.getElementById('f-status').value = oh.isOpen() ? 'open' : 'closed'; } catch(e) {} }
+  if (place.business_status === 'CLOSED_PERMANENTLY' || place.business_status === 'CLOSED_TEMPORARILY') {
+    document.getElementById('f-status').value = 'closed';
+  }
+
+  // Catégorie auto
+  document.getElementById('f-cat').value = guessCategory(types);
+
+  // Coords
+  document.getElementById('f-lat').value = lat.toFixed(6);
+  document.getElementById('f-lng').value = lng.toFixed(6);
+
+  // ── Récap visuel ──
+  document.querySelectorAll('[id^="fi-row-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('fi-hours-detail').style.display = 'none';
+
+  fi('fi-name',    place.name,             'fi-row-name');
+  fi('fi-address', place.formatted_address || place.vicinity, 'fi-row-address');
+  fi('fi-phone',   place.formatted_phone_number || place.international_phone_number || '', 'fi-row-phone');
+  fi('fi-coords',  `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'fi-row-coords');
+  fi('fi-cat',     guessCategory(types),   'fi-row-cat');
+
+  if (place.website) {
+    document.getElementById('fi-website').innerHTML = `<a href="${place.website}" target="_blank" style="color:var(--accent)">${place.website.replace(/^https?:\/\//,'').split('/')[0]}</a>`;
+    document.getElementById('fi-row-website').style.display = 'flex';
+  }
+  if (place.rating) {
+    fi('fi-rating', `${'★'.repeat(Math.round(place.rating))} ${place.rating}/5 (${place.user_ratings_total||0} avis)`, 'fi-row-rating');
+  }
+
+  const statusText = place.business_status === 'OPERATIONAL' ? '🟢 Opérationnel'
+    : place.business_status === 'CLOSED_TEMPORARILY' ? '🟡 Fermé temporairement'
+    : place.business_status === 'CLOSED_PERMANENTLY' ? '🔴 Fermé définitivement'
+    : (oh ? (oh.isOpen?.() ? '🟢 Ouvert maintenant' : '🔴 Fermé maintenant') : '');
+  fi('fi-status', statusText, 'fi-row-status');
+
+  if (oh?.weekday_text?.length) {
+    fi('fi-hours', oh.weekday_text[new Date().getDay()===0?6:new Date().getDay()-1], 'fi-row-hours');
+    const detail = document.getElementById('fi-hours-detail');
+    detail.innerHTML = '<strong style="color:var(--text);display:block;margin-bottom:4px">📅 Horaires complets</strong>' +
+      oh.weekday_text.map((h,i) => {
+        const isToday = (new Date().getDay()===0?6:new Date().getDay()-1) === i;
+        return `<div style="${isToday?'color:var(--accent);font-weight:700':''}">${h}</div>`;
+      }).join('');
+    detail.style.display = 'block';
+  }
+
+  document.getElementById('fetchedInfo').style.display = 'block';
+}
+
+// Fallback : juste l'adresse via Nominatim si aucun commerce trouvé
+async function reverseGeocodeSimple(lat, lng) {
+  try {
+    const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+    const data = await res.json();
+    if (data.display_name) {
+      const addr = data.display_name.split(',').slice(0,4).join(',').trim();
+      document.getElementById('f-address').value = addr;
+      fi('fi-address', addr, 'fi-row-address');
+      fi('fi-coords', `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'fi-row-coords');
+      document.getElementById('fetchedInfo').style.display = 'block';
+    }
+  } catch(e) {}
+}
+
+function fi(id, val, rowId) {
+  // Helper : affiche une ligne de l'info récap si val existe
+  if (val) {
+    document.getElementById(id).textContent = val;
+    if (rowId) document.getElementById(rowId).style.display = 'flex';
+  }
+}
+
+function guessCategory(types) {
+  if (!types) return '🏪 Autre';
+  const map = [
+    [['bakery'],                                          '🍞 Boulangerie'],
+    [['supermarket','grocery_or_supermarket','convenience_store'], '🛒 Supermarché'],
+    [['pharmacy','drugstore'],                            '💊 Pharmacie'],
+    [['clothing_store','department_store'],               '👗 Vêtements'],
+    [['restaurant','meal_takeaway','meal_delivery'],      '🍕 Restaurant'],
+    [['cafe','coffee_shop'],                              '☕ Café'],
+    [['hardware_store','home_goods_store'],               '🔧 Bricolage'],
+    [['book_store'],                                      '📚 Librairie'],
+    [['florist'],                                         '🌸 Fleuriste'],
+    [['car_dealer','car_repair','car_wash','gas_station'],   '🚗 3anout Drive'],
+  ];
+  for (const [keywords, label] of map) {
+    if (types.some(t => keywords.includes(t))) return label;
+  }
+  return '🏪 Autre';
+}
+
+function initPlacePicker() {
+  if (!window.google || !window.google.maps) {
+    setTimeout(initPlacePicker, 500); return;
+  }
+  initAdminMap();
+  const input = document.getElementById('placeSearch');
+  if (!input) return;
+
+  // Demander TOUS les champs disponibles
+  const autocomplete = new google.maps.places.Autocomplete(input, {
+    language: 'fr',
+    fields: [
+      'place_id','name','formatted_address','geometry',
+      'formatted_phone_number','international_phone_number',
+      'opening_hours','current_opening_hours',
+      'business_status','website','rating','user_ratings_total',
+      'price_level','types','photos','icon','vicinity',
+      'address_components','adr_address','url'
+    ]
+  });
+
+  autocomplete.addListener('place_changed', () => {
+    const place = autocomplete.getPlace();
+    if (!place.geometry) { showToast('⚠️ Lieu non trouvé'); return; }
+
+    const lat  = place.geometry.location.lat();
+    const lng  = place.geometry.location.lng();
+    const types = place.types || [];
+
+    // ── Remplir tous les champs du formulaire ──
+    if (place.name)                   document.getElementById('f-name').value    = place.name;
+    if (place.formatted_address)      document.getElementById('f-address').value = place.formatted_address;
+    if (place.formatted_phone_number) document.getElementById('f-phone').value   = place.formatted_phone_number;
+    else if (place.international_phone_number) document.getElementById('f-phone').value = place.international_phone_number;
+
+    // Horaires complets
+    const oh = place.opening_hours || place.current_opening_hours;
+    if (oh?.weekday_text?.length) {
+      document.getElementById('f-hours').value = oh.weekday_text.join(' | ');
+    }
+
+    // Statut
+    if (oh) {
+      try { document.getElementById('f-status').value = oh.isOpen() ? 'open' : 'closed'; } catch(e) {}
+    }
+    if (place.business_status === 'CLOSED_PERMANENTLY' || place.business_status === 'CLOSED_TEMPORARILY') {
+      document.getElementById('f-status').value = 'closed';
+    }
+
+    // Catégorie
+    const cat = guessCategory(types);
+    document.getElementById('f-cat').value = cat;
+
+    // Coordonnées
+    document.getElementById('f-lat').value = lat.toFixed(6);
+    document.getElementById('f-lng').value = lng.toFixed(6);
+
+    // ── Mini-map ──
+    adminPickerMap.setView([lat, lng], 17);
+    placeAdminMarker(lat, lng);
+
+    // ── Récap visuel (masquer toutes les lignes d'abord) ──
+    document.querySelectorAll('[id^="fi-row-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('fi-hours-detail').style.display = 'none';
+
+    fi('fi-name',    place.name,               'fi-row-name');
+    fi('fi-address', place.formatted_address,   'fi-row-address');
+    fi('fi-phone',   place.formatted_phone_number || place.international_phone_number || '', 'fi-row-phone');
+    fi('fi-website', place.website ? `<a href="${place.website}" target="_blank" style="color:var(--accent)">${place.website.replace(/^https?:\/\//,'').split('/')[0]}</a>` : '', 'fi-row-website');
+    if (place.website) document.getElementById('fi-website').innerHTML = `<a href="${place.website}" target="_blank" style="color:var(--accent)">${place.website.replace(/^https?:\/\//,'').split('/')[0]}</a>`;
+
+    if (place.rating) {
+      fi('fi-rating', `${'★'.repeat(Math.round(place.rating))} ${place.rating}/5 (${place.user_ratings_total || 0} avis)`, 'fi-row-rating');
+    }
+
+    const statusText = place.business_status === 'OPERATIONAL' ? '🟢 Opérationnel'
+      : place.business_status === 'CLOSED_TEMPORARILY' ? '🟡 Fermé temporairement'
+      : place.business_status === 'CLOSED_PERMANENTLY' ? '🔴 Fermé définitivement'
+      : (oh ? (oh.isOpen?.() ? '🟢 Ouvert maintenant' : '🔴 Fermé maintenant') : '');
+    fi('fi-status', statusText, 'fi-row-status');
+    fi('fi-cat',    cat,        'fi-row-cat');
+    fi('fi-coords', `${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'fi-row-coords');
+
+    // Horaires détaillés jour par jour
+    if (oh?.weekday_text?.length) {
+      fi('fi-hours', oh.weekday_text[new Date().getDay() === 0 ? 6 : new Date().getDay()-1], 'fi-row-hours');
+      const detail = document.getElementById('fi-hours-detail');
+      detail.innerHTML = '<strong style="color:var(--text);display:block;margin-bottom:4px">📅 Horaires complets</strong>' +
+        oh.weekday_text.map((h,i) => {
+          const isToday = (new Date().getDay() === 0 ? 6 : new Date().getDay()-1) === i;
+          return `<div style="${isToday?'color:var(--accent);font-weight:700':''}">${h}</div>`;
+        }).join('');
+      detail.style.display = 'block';
+    }
+
+    document.getElementById('fetchedInfo').style.display = 'block';
+
+    const count = [place.name, place.formatted_address, place.formatted_phone_number, oh, place.website, place.rating]
+      .filter(Boolean).length;
+    showToast(`✅ ${count} informations récupérées depuis Google Maps !`);
+  });
+}
+
+function updateUserMarker(lat, lng) {
+  if (userMarker) { map.removeLayer(userMarker); map.removeLayer(radiusCircle); }
+  userMarker = L.marker([lat, lng], { icon: L.divIcon({
+    html: `<div style="width:16px;height:16px;background:#e53935;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(229,57,53,.8)"></div>`,
+    className:'', iconSize:[16,16], iconAnchor:[8,8]
+  })}).addTo(map);
+  radiusCircle = L.circle([lat, lng], { radius:searchRadius*1000, color:'#f0c040', fillColor:'#f0c040', fillOpacity:.05, weight:1, dashArray:'6,6' }).addTo(map);
+}
+
+// ════════════════════════════════
+//  RENDER STORES
+// ════════════════════════════════
+function dist(s) {
+  const R=6371, dLat=(s.lat-userLat)*Math.PI/180, dLng=(s.lng-userLng)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(userLat*Math.PI/180)*Math.cos(s.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function distStr(s) { const d=dist(s); return d<1?`${Math.round(d*1000)} m`:`${d.toFixed(1)} km`; }
+function catBg(cat) {
+  const m={'🍞':'rgba(240,192,64,.2)','🛒':'rgba(61,255,160,.2)','💊':'rgba(255,107,53,.2)',
+    '👗':'rgba(120,120,255,.2)','🍕':'rgba(255,80,80,.2)','☕':'rgba(160,100,60,.2)',
+    '🔧':'rgba(100,160,220,.2)','📚':'rgba(200,100,200,.2)','🌸':'rgba(255,150,200,.2)','🚗':'rgba(80,180,255,.2)'};
+  const k=Object.keys(m).find(k=>cat&&cat.startsWith(k)); return k?m[k]:'rgba(100,100,100,.2)';
+}
+function starsHtml(r,size='.82rem'){if(!r)return'';const f=Math.round(r);return`<span style="font-size:${size};color:var(--accent)">${'★'.repeat(f)}${'☆'.repeat(5-f)}</span>`;}
+
+function renderStores() {
+  if (!map) { setTimeout(renderStores, 300); return; }
+  const storeListEl = document.getElementById('storeList');
+  const countEl = document.getElementById('storeCount');
+  if(!storeListEl) return;
+  mapMarkers.forEach(m => map.removeLayer(m)); mapMarkers=[];
+  if(mobilePanelOpen) renderStoresMobile();
+
+  const q = (document.getElementById('searchInput')||{value:''}).value.toLowerCase();
+  const filtered = stores.filter(s => {
+    const d=dist(s); if(d>searchRadius)return false;
+    if(catFilter!=='all'&&s.cat!==catFilter)return false;
+    if(favFilter && !isFav(s.id))return false;
+    if(q&&!s.name.toLowerCase().includes(q)&&!s.address.toLowerCase().includes(q)&&!s.cat.toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>dist(a)-dist(b));
+
+  const badge=document.getElementById('countBadge');
+  if(badge) badge.textContent=filtered.length;
+
+  // filter chips
+  const cats=[...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
+  const fr=document.getElementById('filterRow');
+  if(fr){
+    const favs=getFavs();
+    fr.innerHTML='<button class="filter-chip '+(catFilter==='all'&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\'all\')" >Tous</button>';
+    if(favs.length>0||currentUser){
+      fr.innerHTML+='<button class="filter-chip '+(favFilter?'active':'')+' " onclick="toggleFavFilter()" style="'+(favFilter?'':'border-color:#e53935;color:#e53935;')+'">❤️ Favoris'+(favs.length?` (${favs.length})`:'')+'</button>';
+    }
+    cats.forEach(c=>{const sc=c.replace(/'/g,'\\\'');fr.innerHTML+='<button class="filter-chip '+(catFilter===c&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\''+sc+'\')" >'+c+'</button>';});
+  }
+
+  const list=document.getElementById('storeList');
+  if(!list)return;
+  if(!filtered.length){list.innerHTML=`<div class="no-stores"><div class="no-stores-icon">🏙️</div><h3>Aucun magasin trouvé</h3><p>Essayez d'élargir votre recherche.</p></div>`;return;}
+
+  list.innerHTML='';
+  filtered.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className=`store-card ${s.id===activeStoreId?'active':''}`;
+    div.style.animationDelay=`${i*.04}s`;
+    const avg=s.avgRating?starsHtml(s.avgRating)+` <span style="font-size:.72rem;color:var(--muted)">(${s.reviewCount||0})</span>`:'';
+    div.innerHTML=`
+      <div class="card-top">
+        <div class="store-icon" style="background:${catBg(s.cat)}">${s.cat?s.cat.split(' ')[0]:''}</div>
+        <div class="card-info">
+          <div class="card-name">${s.name}</div>
+          <div class="card-cat">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div>
+        </div>
+        <div class="card-dist">${distStr(s)}</div>
+      </div>
+      <div class="card-address">📍 ${s.address}</div>
+      <div class="card-footer">
+        <div class="open-badge"><div class="open-dot ${s.status}"></div><span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span></div>
+        <div class="stars-mini">${avg}</div>
+      </div>`;
+    // Bouton favori dans le card-footer
+    const favBtn = document.createElement('button');
+    favBtn.className = 'fav-btn';
+    favBtn.title = isFav(s.id) ? 'Retirer des favoris' : 'Ajouter aux favoris';
+    favBtn.innerHTML = isFav(s.id) ? '❤️' : '🤍';
+    favBtn.onclick = (e) => toggleFav(s.id, e);
+    const footer = div.querySelector('.card-footer');
+    if(footer) footer.appendChild(favBtn);
+    else div.appendChild(favBtn);
+
+    div.onclick=()=>openStore(s);
+    list.appendChild(div);
+
+    // map marker
+    const icon=L.divIcon({html:`<div style='background:${s.status==='open'?'var(--accent)':'var(--accent2)'};color:#000;font-size:1.1rem;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer'>${s.cat?s.cat.split(' ')[0]:''}</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17]});
+    const mk=L.marker([s.lat,s.lng],{icon}).addTo(map);
+    mk.bindPopup(`<div class="popup-inner"><div class="popup-name">${s.name}</div><div class="popup-cat">${s.cat} · ${distStr(s)}</div><button class="popup-btn" onclick='openStoreById('${s.id}')">Voir les détails</button></div>`);
+    mapMarkers.push(mk);
+  });
+}
+
+window.openStoreById=id=>{const s=stores.find(x=>x.id===id);if(s)openStore(s);};
+
+// ════════════════════════════════
+//  STORE MODAL
+// ════════════════════════════════
+let currentModalStoreId=null;
+
+function openStore(s) {
+  currentModalStoreId=s.id; activeStoreId=s.id; renderStores();
+  document.getElementById('modalName').textContent=s.name;
+  document.getElementById('modalCat').textContent=s.cat;
+  document.getElementById('modalAddress').textContent=s.address;
+  document.getElementById('modalHours').textContent=s.hours;
+  // Téléphone
+  document.getElementById('modalPhone').textContent = s.phone || '';
+  document.getElementById('modalPhoneRow').style.display = s.phone ? '' : 'none';
+
+  // WhatsApp — numéro cliquable
+  const waEl  = document.getElementById('modalWhatsapp');
+  const waRow = document.getElementById('modalWhatsappRow');
+  if(s.whatsapp){
+    // Nettoyer le numéro : garder seulement chiffres et +
+    const waNum = s.whatsapp.replace(/[\s\-().]/g, '');
+    const waUrl = 'https://wa.me/' + waNum.replace('+','');
+    waEl.innerHTML = '<a href="' + waUrl + '" target="_blank" rel="noopener" style="color:#25D366;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:6px">'
+      + '<svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.138.563 4.14 1.547 5.874L0 24l6.273-1.519A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.032-1.388l-.36-.214-3.733.904.946-3.629-.235-.374A9.818 9.818 0 012.182 12C2.182 6.573 6.573 2.182 12 2.182S21.818 6.573 21.818 12 17.427 21.818 12 21.818z"/></svg>'
+      + s.whatsapp + '</a>';
+    waRow.style.display = '';
+  } else {
+    waRow.style.display = 'none';
+  }
+
+  // image
+  const imgEl=document.getElementById('modalImg');
+  const photos=s.photos&&s.photos.length?s.photos:[];
+  if(photos.length){
+    imgEl.innerHTML=`<img src="${photos[0]}" alt="${s.name}"><div class="modal-img-overlay"></div>`;
+  } else {
+    imgEl.innerHTML=`<span style="font-size:3.5rem;position:relative;z-index:1">${s.cat?s.cat.split(' ')[0]:''}</span><div class="modal-img-overlay"></div>`;
+  }
+
+  document.getElementById('modalDirections').onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`,'_blank');
+  document.getElementById('modalShare').onclick=()=>{
+    const url=`${location.href.split('?')[0]}?store=${s.id}`;
+    navigator.clipboard.writeText(url).then(()=>showToast('🔗 Lien copié !'));
+  };
+
+  loadReviews(s.id);
+  document.getElementById('modalOverlay').classList.add('visible');
+  map.panTo([s.lat,s.lng]);
+}
+
+function closeModal(e){
+  if(e&&e.target!==document.getElementById('modalOverlay'))return;
+  document.getElementById('modalOverlay').classList.remove('visible');
+  activeStoreId=null; currentRating=0; setRating(0);
+  renderStores();
+}
+
+// ════════════════════════════════
+//  REVIEWS
+// ════════════════════════════════
+function setRating(v){
+  currentRating=v;
+  document.querySelectorAll('.star-pick').forEach(el=>{
+    el.textContent=parseInt(el.dataset.v)<=v?'★':'☆';
+  });
+}
+
+async function loadReviews(storeId){
+  document.getElementById('reviewList').innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('avgNum').textContent='–';
+  document.getElementById('avgStars').textContent='';
+  document.getElementById('reviewCount').textContent='';
+  if(!fb){return;}
+  try{
+    const snap=await fb.getDocs(fb.query(fb.collection(fb.db,`stores/${storeId}/reviews`),fb.orderBy('createdAt','desc')));
+    const revs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const rl=document.getElementById('reviewList');
+    if(!revs.length){rl.innerHTML='<div style="text-align:center;color:var(--muted);font-size:.82rem;padding:12px">Aucun avis pour l\'instant. Soyez le premier !</div>';return;}
+    rl.innerHTML=revs.map(r=>`
+      <div class="review-item">
+        <div class="review-header">
+          <div class="review-author">${r.author||'Anonyme'}</div>
+          <div class="review-stars">${'★'.repeat(r.rating||0)}</div>
+        </div>
+        <div class="review-text">${r.text||''}</div>
+        <div class="review-date">${r.createdAt?.toDate?r.createdAt.toDate().toLocaleDateString('fr-BE'):''}</div>
+      </div>`).join('');
+    const avg=revs.reduce((s,r)=>s+(r.rating||0),0)/revs.length;
+    document.getElementById('avgNum').textContent=avg.toFixed(1);
+    document.getElementById('avgStars').innerHTML=starsHtml(avg,'1rem');
+    document.getElementById('reviewCount').textContent=`(${revs.length})`;
+  }catch(e){document.getElementById('reviewList').innerHTML='<div style="color:var(--muted);font-size:.82rem;padding:12px">Impossible de charger les avis.</div>';}
+}
+
+async function submitReview(){
+  if(!currentModalStoreId||!fb){showToast('⚠️ Firebase non configuré');return;}
+  const author=document.getElementById('reviewAuthor').value.trim()||'Anonyme';
+  const text=document.getElementById('reviewText').value.trim();
+  if(!currentRating){showToast('⭐ Choisissez une note');return;}
+  if(!text){showToast('✏️ Écrivez un commentaire');return;}
+  try{
+    await fb.addDoc(fb.collection(fb.db,`stores/${currentModalStoreId}/reviews`),{author,text,rating:currentRating,createdAt:fb.serverTimestamp()});
+    // update avg on store doc
+    const snap=await fb.getDocs(fb.collection(fb.db,`stores/${currentModalStoreId}/reviews`));
+    const revs=snap.docs.map(d=>d.data());
+    const avg=revs.reduce((s,r)=>s+(r.rating||0),0)/revs.length;
+    await fb.updateDoc(fb.doc(fb.db,'stores',currentModalStoreId),{avgRating:parseFloat(avg.toFixed(1)),reviewCount:revs.length});
+    document.getElementById('reviewText').value='';
+    document.getElementById('reviewAuthor').value='';
+    setRating(0);
+    loadReviews(currentModalStoreId);
+    showToast('✅ Avis publié !');
+  }catch(e){showToast('❌ Erreur : '+e.message);}
+}
+
+// ════════════════════════════════
+//  PHOTOS
+// ════════════════════════════════
+function handlePhotoSelect(e){
+  const files=[...e.target.files].slice(0,5-pendingPhotos.length);
+  files.forEach(f=>{
+    if(f.size>5*1024*1024){showToast('⚠️ Photo trop lourde (max 5 Mo)');return;}
+    pendingPhotos.push(f);
+    const url=URL.createObjectURL(f);
+    const wrap=document.createElement('div');
+    wrap.className='photo-thumb-wrap';
+    const idx=pendingPhotos.length-1;
+    wrap.innerHTML=`<img src="${url}" class="photo-thumb"><button class="photo-remove" onclick="removePendingPhoto(${idx},this.parentNode)">✕</button>`;
+    document.getElementById('photoPreview').appendChild(wrap);
+  });
+}
+
+function removePendingPhoto(idx,el){pendingPhotos.splice(idx,1);el.remove();}
+
+async function uploadPhotos(storeId){
+  if(!pendingPhotos.length) return [];
+  const { cloud, preset } = window._cloudinary;
+  const urls = [];
+  for(const file of pendingPhotos){
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', preset);
+    fd.append('folder', `nearshop/${storeId}`);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, { method:'POST', body:fd });
+    const data = await res.json();
+    if(data.secure_url) urls.push(data.secure_url);
+    else showToast('⚠️ Erreur upload photo : ' + (data.error?.message||'inconnue'));
+  }
+  return urls;
+}
+
+// ════════════════════════════════
+//  ADMIN CRUD
+// ════════════════════════════════
+async function submitStore(){
+  if(!fb){showToast('⚠️ Firebase non configuré');return;}
+  const id=document.getElementById('f-id').value;
+  const name=document.getElementById('f-name').value.trim();
+  const address=document.getElementById('f-address').value.trim();
+  const lat=parseFloat(document.getElementById('f-lat').value);
+  const lng=parseFloat(document.getElementById('f-lng').value);
+  if(!name||!address||isNaN(lat)||isNaN(lng)){showToast('⚠️ Remplissez tous les champs');return;}
+
+  const existing=JSON.parse(document.getElementById('f-existingPhotos').value||'[]');
+  const newPhotos=await uploadPhotos(id||'temp_'+Date.now());
+  const photos=[...existing,...newPhotos];
+
+  const data={
+    name, cat:document.getElementById('f-cat').value,
+    phone:document.getElementById('f-phone').value.trim(),
+    whatsapp:document.getElementById('f-whatsapp').value.trim(),
+    address, lat, lng,
+    hours:document.getElementById('f-hours').value.trim(),
+    status:document.getElementById('f-status').value,
+    photos,
+    updatedAt:fb.serverTimestamp()
+  };
+
+  try{
+    if(id){await fb.updateDoc(fb.doc(fb.db,'stores',id),data);showToast('✅ Magasin mis à jour !');}
+    else{data.createdAt=fb.serverTimestamp();await fb.addDoc(fb.collection(fb.db,'stores'),data);showToast('✅ Magasin ajouté !');}
+    resetForm();
+  }catch(e){showToast('❌ Erreur : '+e.message);}
+}
+
+function editStore(id){
+  const s=stores.find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('f-id').value=s.id;
+  document.getElementById('f-name').value=s.name;
+  document.getElementById('f-cat').value=s.cat;
+  document.getElementById('f-phone').value=s.phone||'';
+  document.getElementById('f-whatsapp').value=s.whatsapp||'';
+  document.getElementById('f-address').value=s.address;
+  document.getElementById('f-lat').value=s.lat;
+  document.getElementById('f-lng').value=s.lng;
+  document.getElementById('f-hours').value=s.hours||'';
+  document.getElementById('f-status').value=s.status||'open';
+  document.getElementById('f-existingPhotos').value=JSON.stringify(s.photos||[]);
+  pendingPhotos=[];
+  const prev=document.getElementById('photoPreview');
+  prev.innerHTML=(s.photos||[]).map((u,i)=>`<div class="photo-thumb-wrap"><img src="${u}" class="photo-thumb"><button class="photo-remove" onclick="removeExistingPhoto(${i},this.parentNode)'>✕</button></div>`).join('');
+  document.getElementById('formTitle').textContent='Modifier un magasin';
+  document.querySelector('.admin-form-card').scrollIntoView({behavior:'smooth'});
+}
+
+function removeExistingPhoto(idx,el){
+  const existing=JSON.parse(document.getElementById('f-existingPhotos').value||'[]');
+  existing.splice(idx,1);
+  document.getElementById('f-existingPhotos').value=JSON.stringify(existing);
+  el.remove();
+}
+
+async function deleteStore(id){
+  if(!confirm('Supprimer ce magasin définitivement ?'))return;
+  try{await fb.deleteDoc(fb.doc(fb.db,'stores',id));showToast('🗑️ Magasin supprimé !');}
+  catch(e){showToast('❌ '+e.message);}
+}
+
+function resetForm(){
+  ['f-id','f-name','f-phone','f-whatsapp','f-address','f-lat','f-lng','f-hours','f-existingPhotos'].forEach(id=>{
+    const el=document.getElementById(id); if(el)el.value=id==='f-existingPhotos'?'[]':'';
+  });
+  document.getElementById('f-status').value='open';
+  document.getElementById('formTitle').textContent='Ajouter un magasin';
+  document.getElementById('photoPreview').innerHTML='';
+  document.getElementById('fetchedInfo').style.display='none';
+  const ps=document.getElementById('placeSearch'); if(ps) ps.value='';
+  if(adminPickerMarker && adminPickerMap){ adminPickerMap.removeLayer(adminPickerMarker); adminPickerMarker=null; }
+  pendingPhotos=[];
+}
+
+function renderAdminTable(){
+  const tbody=document.getElementById('adminTableBody');
+  if(!tbody)return;
+  tbody.innerHTML=stores.map(s=>`
+    <tr>
+      <td style="font-size:1.2rem">${s.cat?s.cat.split(' ')[0]:''}</td>
+      <td><div style="font-weight:600;font-size:.85rem">${s.name}</div><div style="font-size:.72rem;color:var(--muted)">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div></td>
+      <td style="color:var(--muted);font-size:.8rem">${s.address}</td>
+      <td><span style='color:${s.status==='open'?'var(--green)':'var(--accent2)'};font-weight:600;font-size:.8rem'>${s.status==='open'?'🟢 Ouvert':'🔴 Fermé'}</span></td>
+      <td style="display:flex;gap:5px">
+        <button class="tbl-btn edit" onclick="editStore('${s.id}')">✏️ Modifier</button>
+        <button class="tbl-btn delete" onclick="deleteStore('${s.id}')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+function updateAdminStats(){
+  const g=document.getElementById('statsGrid');if(!g)return;
+  const open=stores.filter(s=>s.status==='open').length;
+  const cats=new Set(stores.map(s=>s.cat)).size;
+  const rated=stores.filter(s=>s.avgRating);
+  const avgGlobal=rated.length?rated.reduce((s,x)=>s+(x.avgRating||0),0)/rated.length:0;
+  g.innerHTML=[
+    {n:stores.length,l:'Total',c:'var(--accent)'},
+    {n:open,l:'Ouverts',c:'var(--green)'},
+    {n:cats,l:'Catégories',c:'var(--text)'},
+    {n:avgGlobal?avgGlobal.toFixed(1):'–',l:'Note moy.',c:'var(--accent)'}
+  ].map(x=>`<div class="stat-box"><div class="stat-num" style="color:${x.c}">${x.n}</div><div class="stat-lbl">${x.l}</div></div>`).join('');
+}
+
+// ════════════════════════════════
+//  AUTH
+// ════════════════════════════════
+function requireAdmin(){
+  if(isAdmin){switchView('admin');}
+  else{document.getElementById('authWall').classList.remove('hidden');}
+}
+
+// ════════════════════════════════
+//  ADMIN AUTH (1 seul compte autorisé)
+// ════════════════════════════════
+async function loginAdmin(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pwd   = document.getElementById('authPwd').value;
+  const err   = document.getElementById('authError');
+  err.style.display = 'none';
+
+  // Vérifier email avant même d'envoyer à Firebase
+  if(email !== ADMIN_EMAIL){
+    err.textContent = '🚫 Accès refusé — compte non autorisé.';
+    err.style.display = 'block';
+    return;
+  }
+  try{
+    await fb.signInWithEmailAndPassword(fb.auth, email, pwd);
+    document.getElementById('authWall').classList.add('hidden');
+    switchView('admin');
+    showToast('✅ Bienvenue Admin !');
+  }catch(e){
+    const msg = e.code === 'auth/invalid-credential' ? 'Email ou mot de passe incorrect.'
+      : e.code === 'auth/too-many-requests' ? 'Trop de tentatives. Réessayez plus tard.'
+      : e.message;
+    err.textContent = '❌ ' + msg;
+    err.style.display = 'block';
+  }
+}
+
+// ════════════════════════════════
+//  USER AUTH (inscription / connexion)
+// ════════════════════════════════
+function openUserAuth(){
+  if(currentUser){
+    toggleUserMenu();
+    return;
+  }
+  document.getElementById('userAuthModal').classList.remove('hidden');
+  document.getElementById('userAuthError').style.display = 'none';
+}
+
+function closeUserAuth(){
+  document.getElementById('userAuthModal').classList.add('hidden');
+}
+
+function switchAuthTab(tab){
+  document.getElementById('loginForm').style.display    = tab==='login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab==='register' ? 'block' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabRegister').classList.toggle('active', tab==='register');
+  document.getElementById('userAuthError').style.display = 'none';
+}
+
+async function loginUser(){
+  const email = document.getElementById('userEmail').value.trim();
+  const pwd   = document.getElementById('userPwd').value;
+  const err   = document.getElementById('userAuthError');
+  err.style.display = 'none';
+
+  // Bloquer le compte admin depuis le portail utilisateur
+  if(email === ADMIN_EMAIL){
+    err.textContent = '🚫 Utilisez le panneau admin pour ce compte.';
+    err.style.display = 'block'; return;
+  }
+  try{
+    await fb.signInWithEmailAndPassword(fb.auth, email, pwd);
+    closeUserAuth();
+    showToast('✅ Bienvenue !');
+  }catch(e){
+    const msg = e.code === 'auth/invalid-credential' ? 'Email ou mot de passe incorrect.'
+      : e.code === 'auth/user-not-found' ? 'Aucun compte avec cet email. Inscrivez-vous !'
+      : e.message;
+    err.textContent = '❌ ' + msg;
+    err.style.display = 'block';
+  }
+}
+
+async function registerUser(){
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pwd   = document.getElementById('regPwd').value;
+  const err   = document.getElementById('userAuthError');
+  err.style.display = 'none';
+
+  if(!name){ err.textContent = '❌ Entrez un prénom ou pseudo.'; err.style.display='block'; return; }
+  if(email === ADMIN_EMAIL){ err.textContent = '🚫 Cet email non disponible.'; err.style.display='block'; return; }
+  if(pwd.length < 6){ err.textContent = '❌ Mot de passe trop court (min. 6 caractères).'; err.style.display='block'; return; }
+
+  try{
+    const cred = await fb.createUserWithEmailAndPassword(fb.auth, email, pwd);
+    await fb.updateProfile(cred.user, { displayName: name });
+    // Sauvegarder dans Firestore
+    await saveUserToFirestore(cred.user, 'email');
+    closeUserAuth();
+    showToast('🎉 Compte créé ! Bienvenue ' + name + ' !');
+  }catch(e){
+    const msg = e.code === 'auth/email-already-in-use' ? 'Cet email est déjà utilisé. Connectez-vous !'
+      : e.code === 'auth/weak-password' ? 'Mot de passe trop faible.'
+      : e.message;
+    err.textContent = '❌ ' + msg;
+    err.style.display = 'block';
+  }
+}
+
+async function loginUserGoogle(){
+  const err = document.getElementById('userAuthError');
+  try{
+    const result = await fb.signInWithPopup(fb.auth, fb.gProvider);
+    const user = result.user;
+    // Bloquer l'admin depuis le portail utilisateur
+    if(user.email === ADMIN_EMAIL){
+      await fb.signOut(fb.auth);
+      err.textContent = '🚫 Utilisez le panneau admin pour ce compte.';
+      err.style.display = 'block'; return;
+    }
+    // Sauvegarder dans Firestore (si nouveau)
+    await saveUserToFirestore(user, 'google');
+    closeUserAuth();
+    showToast('✅ Bienvenue ' + (user.displayName || '') + ' !');
+  }catch(e){
+    err.textContent = '❌ ' + e.message;
+    err.style.display = 'block';
+  }
+}
+
+// ════════════════════════════════
+//  GESTION UTILISATEURS
+// ════════════════════════════════
+async function saveUserToFirestore(user, method){
+  try{
+    const ref = window._fb.db.collection('users').doc(user.uid);
+    // Ne pas faire ref.get() — l'utilisateur n'a pas droit de lire
+    // set() avec merge évite d'écraser si le doc existe déjà
+    const data = {
+      uid:         user.uid,
+      displayName: user.displayName || '',
+      email:       user.email,
+      method:      method,
+      createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      photoURL:    user.photoURL || ''
+    };
+    await ref.set(data, { merge: true });
+    console.log('✅ User saved to Firestore:', user.email);
+    // Sync Google Sheet si configuré
+    if(window.GSHEET_URL) sendToGoogleSheet(data);
+  }catch(e){
+    console.error('saveUser error:', e.code, e.message);
+  }
+}
+
+function switchAdminTab(tab){
+  document.getElementById('adminSectionStores').classList.toggle('active', tab==='stores');
+  document.getElementById('adminSectionUsers').classList.toggle('active', tab==='users');
+  document.querySelectorAll('.admin-nav-tab').forEach((btn,i)=>{
+    btn.classList.toggle('active', (tab==='stores' && i===0)||(tab==='users' && i===1));
+  });
+  if(tab==='users') loadUsersFromFirestore();
+}
+
+async function loadUsersFromFirestore(){
+  const tbody = document.getElementById('usersTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)"><div class="spinner" style="margin:0 auto"></div></td></tr>';
+  try{
+    const snap = await window._fb.db.collection('users').orderBy('createdAt','desc').get();
+    const users = snap.docs.map(d=>d.data());
+
+    // Stats
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayCount = users.filter(u=>u.createdAt?.toDate && u.createdAt.toDate()>=today).length;
+    document.getElementById('statTotal').textContent  = users.length;
+    document.getElementById('statEmail').textContent  = users.filter(u=>u.method==='email').length;
+    document.getElementById('statGoogle').textContent = users.filter(u=>u.method==='google').length;
+    document.getElementById('statToday').textContent  = todayCount;
+    document.getElementById('usersCountBadge').textContent = users.length;
+
+    if(!users.length){
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Aucun utilisateur inscrit pour l\'instant.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML='';
+    users.forEach(u=>{
+      const initial = (u.displayName||u.email||'?').charAt(0).toUpperCase();
+      const date = u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString('fr-BE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '–';
+      const methodBadge = u.method==='google'
+        ? '<span class="user-method-badge badge-google">🔑 Google</span>'
+        : '<span class="user-method-badge badge-email">✉️ Email</span>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="user-avatar-sm">${initial}</div></td>
+        <td style="font-weight:600">${u.displayName||'–'}</td>
+        <td style="color:var(--muted);font-size:.78rem">${u.email}</td>
+        <td>${methodBadge}</td>
+        <td style="color:var(--muted);font-size:.75rem;white-space:nowrap">${date}</td>`;
+      tbody.appendChild(tr);
+    });
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--accent2);padding:20px">❌ Erreur: '+e.message+'</td></tr>';
+  }
+}
+
+function sendToGoogleSheet(data){
+  if(!window.GSHEET_URL) return;
+  // Utiliser GET params pour éviter les problèmes CORS (no preflight)
+  const params = new URLSearchParams({
+    uid:         data.uid        || '',
+    displayName: data.displayName|| '',
+    email:       data.email      || '',
+    method:      data.method     || 'email',
+    createdAt:   data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+  });
+  fetch(window.GSHEET_URL + '?' + params.toString(), { method:'GET', mode:'no-cors' })
+    .catch(e=>console.warn('GSheet sync:', e));
+}
+
+// URL Google Apps Script — persistée dans localStorage
+window.GSHEET_URL = localStorage.getItem('nearshop_gsheet_url') || null;
+
+function toggleGSheetConfig(){
+  const box = document.getElementById('gsheetConfigBox');
+  const input = document.getElementById('gsheetUrlInput');
+  if(!box) return;
+  const visible = box.style.display !== 'none';
+  box.style.display = visible ? 'none' : 'block';
+  if(!visible && window.GSHEET_URL) input.value = window.GSHEET_URL;
+}
+
+function saveGSheetUrl(){
+  const url = document.getElementById('gsheetUrlInput').value.trim();
+  const status = document.getElementById('gsheetStatus');
+  if(!url){ status.textContent = '⚠️ URL vide'; status.style.color = 'var(--accent2)'; return; }
+  if(!url.startsWith('https://script.google.com')){
+    status.textContent = '❌ URL invalide — doit commencer par https://script.google.com';
+    status.style.color = 'var(--accent2)'; return;
+  }
+  window.GSHEET_URL = url;
+  localStorage.setItem('nearshop_gsheet_url', url);
+  status.textContent = '✅ URL sauvegardée !';
+  status.style.color = 'var(--green)';
+  setTimeout(()=>{ status.textContent=''; document.getElementById('gsheetConfigBox').style.display='none'; }, 2000);
+}
+
+async function exportAllToGSheet(){
+  if(!window.GSHEET_URL){
+    showToast("⚙️ Configurez d'abord l'URL Google Sheets");
+    document.getElementById('gsheetConfigBox').style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('exportGSheetBtn');
+  btn.textContent = '⏳ Export...';
+  btn.disabled = true;
+  try{
+    const snap = await window._fb.db.collection('users').orderBy('createdAt','desc').get();
+    const users = snap.docs.map(d=>d.data());
+    let ok = 0, fail = 0;
+    for(const u of users){
+      try{
+        const params = new URLSearchParams({
+          uid:         u.uid             || '',
+          displayName: u.displayName     || '',
+          email:       u.email           || '',
+          method:      u.method          || 'email',
+          createdAt:   u.createdAt?.toDate ? u.createdAt.toDate().toISOString() : new Date().toISOString()
+        });
+        await fetch(window.GSHEET_URL + '?' + params.toString(), { method:'GET', mode:'no-cors' });
+        ok++;
+      } catch(e){ fail++; }
+    }
+    showToast('✅ ' + ok + ' utilisateurs exportés vers Google Sheets !');
+  } catch(e){
+    showToast('❌ Erreur export: ' + e.message);
+  } finally {
+    btn.textContent = '📊 Exporter vers Sheets';
+    btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════
+//  UI UTILISATEUR (header)
+// ════════════════════════════════
+function updateUserUI(user){
+  const avatarBtn = document.getElementById('userAvatarBtn');
+  const loginBtn  = document.getElementById('loginBtn');
+  if(!avatarBtn || !loginBtn) return;
+
+  if(user){
+    loginBtn.style.display = 'none';
+    avatarBtn.style.display = 'flex';
+    const initials = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+    const color = isAdmin ? '#f0c040' : '#3dffa0';
+    avatarBtn.innerHTML = `<div class="user-avatar" style="background:${color};border-color:${color}">${initials}</div>`;
+
+    // Mettre à jour le menu
+    document.getElementById('menuUserName').textContent = user.displayName || 'Utilisateur';
+    document.getElementById('menuUserEmail').textContent = user.email;
+
+    // Ajouter option admin dans le menu si c'est l'admin
+    const menu = document.getElementById('userMenu');
+    const existingAdmin = menu.querySelector('.admin-menu-item');
+    if(isAdmin && !existingAdmin){
+      const adminItem = document.createElement('div');
+      adminItem.className = 'user-menu-item admin-menu-item';
+      adminItem.innerHTML = '⚙️ <span>Administration</span>';
+      adminItem.onclick = () => { closeUserMenu(); switchView('admin'); };
+      menu.insertBefore(adminItem, menu.querySelector('.user-menu-item'));
+    } else if(!isAdmin && existingAdmin){
+      existingAdmin.remove();
+    }
+  } else {
+    loginBtn.style.display = 'flex';
+    avatarBtn.style.display = 'none';
+    closeUserMenu();
+  }
+  // Mettre à jour le bouton nav mobile
+  const mnavUserIcon  = document.getElementById('mnavUserIcon');
+  const mnavUserLabel = document.getElementById('mnavUserLabel');
+  if (mnavUserIcon && mnavUserLabel) {
+    if (user) {
+      const initials = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+      mnavUserIcon.textContent  = initials;
+      mnavUserIcon.style.cssText = 'width:24px;height:24px;border-radius:50%;background:' + (isAdmin ? '#f0c040' : '#3dffa0') + ';color:#000;font-weight:800;font-size:.75rem;display:flex;align-items:center;justify-content:center;';
+      mnavUserLabel.textContent = isAdmin ? 'Admin ★' : (user.displayName || 'Mon compte').split(' ')[0];
+    } else {
+      mnavUserIcon.textContent   = '👤';
+      mnavUserIcon.style.cssText = '';
+      mnavUserLabel.textContent  = 'Connexion';
+    }
+  }
+}
+
+function toggleUserMenu(){
+  document.getElementById('userMenu').classList.toggle('open');
+}
+function closeUserMenu(){
+  document.getElementById('userMenu').classList.remove('open');
+}
+function openMobileUserMenu(){
+  const menu = document.getElementById('mobileUserMenu');
+  const name = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Mon compte';
+  const email = currentUser?.email || '';
+  const initial = name.charAt(0).toUpperCase();
+  const color = isAdmin ? '#f0c040' : '#3dffa0';
+  document.getElementById('mobileMenuName').textContent = name;
+  document.getElementById('mobileMenuEmail').textContent = email;
+  const avatar = document.getElementById('mobileMenuAvatar');
+  if(avatar){ avatar.textContent = initial; avatar.style.background = color; avatar.style.color = isAdmin ? '#000' : '#000'; }
+  menu.classList.remove('hidden');
+}
+function closeMobileUserMenu(){
+  document.getElementById('mobileUserMenu').classList.add('hidden');
+}
+
+// Fermer le menu si clic ailleurs
+document.addEventListener('click', e => {
+  try {
+    const menu = document.getElementById('userMenu');
+    const btn  = document.getElementById('userAvatarBtn');
+    if(menu && !menu.contains(e.target) && btn && !btn.contains(e.target)){
+      closeUserMenu();
+    }
+  } catch(e) {}
+});
+
+// ════════════════════════════════
+//  RECHERCHE DE VILLE
+// ════════════════════════════════
+let _citySearchTimer = null;
+let _mapClickMode = false;
+
+function openCitySearch() {
+  document.getElementById('cityModal').classList.remove('hidden');
+  document.getElementById('cityInput').value = '';
+  document.getElementById('cityResults').innerHTML = '';
+  setTimeout(() => document.getElementById('cityInput').focus(), 200);
+}
+
+function closeCitySearch() {
+  document.getElementById('cityModal').classList.add('hidden');
+  disableMapClick();
+}
+
+function searchCity(query) {
+  clearTimeout(_citySearchTimer);
+  const results = document.getElementById('cityResults');
+  if (!query || query.length < 2) { results.innerHTML = ''; return; }
+
+  results.innerHTML = '<li style="padding:10px 14px;color:var(--muted);font-size:.82rem">Recherche...</li>';
+
+  _citySearchTimer = setTimeout(() => {
+    // Utiliser Nominatim (OpenStreetMap) — gratuit, pas de clé API
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&q=' + encodeURIComponent(query) + '&accept-language=fr';
+    fetch(url, { headers: { 'Accept-Language': 'fr' } })
+      .then(r => r.json())
+      .then(data => {
+        results.innerHTML = '';
+        if (!data.length) {
+          results.innerHTML = '<li style="padding:10px 14px;color:var(--muted);font-size:.82rem">Aucun résultat</li>';
+          return;
+        }
+        data.forEach(place => {
+          const li = document.createElement('li');
+          li.className = 'city-result-item';
+          const icon = place.type === 'city' || place.type === 'town' ? '🏙️'
+            : place.type === 'village' ? '🏘️'
+            : place.type === 'administrative' ? '📍'
+            : '📌';
+          // Nom court : avant la première virgule
+          const shortName = place.display_name.split(',').slice(0, 2).join(',');
+          li.innerHTML = '<span class="city-result-icon">' + icon + '</span>'
+            + '<div><div style="font-weight:600;font-size:.87rem">' + shortName + '</div>'
+            + '<div style="font-size:.73rem;color:var(--muted)">' + (place.display_name.split(',').slice(2, 4).join(',').trim() || '') + '</div></div>';
+          li.addEventListener('click', () => {
+            moveToCity(parseFloat(place.lat), parseFloat(place.lon), place.display_name.split(',')[0]);
+          });
+          results.appendChild(li);
+        });
+      })
+      .catch(() => {
+        results.innerHTML = '<li style="padding:10px 14px;color:var(--muted);font-size:.82rem">Erreur de recherche</li>';
+      });
+  }, 400);
+}
+
+function moveToCity(lat, lng, name) {
+  // Déplacer le centre de recherche sans changer la position GPS réelle
+  userLat = lat;
+  userLng = lng;
+  map.setView([lat, lng], 14);
+  updateUserMarker(lat, lng);
+  renderStores();
+  closeCitySearch();
+  showToast('📍 Zone : ' + name);
+}
+
+function enableMapClick() {
+  closeCitySearch();
+  _mapClickMode = true;
+  showToast('👆 Cliquez sur la carte pour choisir un endroit');
+  map.getContainer().style.cursor = 'crosshair';
+  map.once('click', function(e) {
+    disableMapClick();
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    // Reverse geocode pour avoir le nom
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=fr')
+      .then(r => r.json())
+      .then(data => {
+        const name = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb || 'Position choisie';
+        moveToCity(lat, lng, name);
+      })
+      .catch(() => moveToCity(lat, lng, 'Position choisie'));
+  });
+}
+
+function disableMapClick() {
+  _mapClickMode = false;
+  if (map) map.getContainer().style.cursor = '';
+}
+
+async function doLogout(){
+  await fb.signOut(fb.auth);
+  isAdmin = false;
+  switchView('user');
+  showToast('👋 À bientôt !');
+}
+
+// ════════════════════════════════
+//  NAV
+// ════════════════════════════════
+function switchView(v){
+  document.getElementById('tabExplore').classList.toggle('active',v==='user');
+  document.getElementById('tabAdmin').classList.toggle('active',v==='admin');
+  document.getElementById('userView').classList.toggle('hidden',v==='admin');
+  document.getElementById('adminView').classList.toggle('visible',v==='admin');
+  if(v==='admin'&&!isAdmin){requireAdmin();return;}
+  if(v==='admin') { setTimeout(()=>{ initAdminMap(); if(adminPickerMap) adminPickerMap.invalidateSize(); }, 100); }
+}
+
+function setCatFilter(el,cat){catFilter=cat;favFilter=false;renderStores();}
+
+function setRadius(km) {
+  searchRadius = km;
+  // Mettre à jour les boutons
+  document.querySelectorAll('.radius-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === km + ' km');
+  });
+  // Mettre à jour le cercle sur la carte
+  if(radiusCircle) {
+    radiusCircle.setRadius(km * 1000);
+  }
+  // Réinitialiser le filtre catégorie si plus aucun magasin dans le périmètre
+  catFilter = 'all';
+  renderStores();
+  showToast(`📍 Rayon mis à jour : ${km} km`);
+}
+
+function locateUser(silent=false){
+  // Vérifier que l'API est disponible
+  if(!navigator.geolocation){
+    if(!silent) showToast('Géolocalisation non supportée');
+    renderStores();
+    return;
+  }
+
+  // Vérifier la permission avant de demander (API moderne)
+  if(navigator.permissions){
+    navigator.permissions.query({name:'geolocation'}).then(result => {
+      if(result.state === 'denied'){
+        showPermissionHelp();
+        renderStores();
+        return;
+      }
+      doLocate(silent);
+    }).catch(() => doLocate(silent));
+  } else {
+    doLocate(silent);
+  }
+}
+
+function doLocate(silent=false){
+  // Indicateur de chargement sur tous les boutons de localisation
+  const btns = document.querySelectorAll('.locate-btn, #mnavLocate');
+  btns.forEach(btn => {
+    btn._origHTML = btn.innerHTML;
+    btn.style.opacity = '0.6';
+  });
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      updateUserMarker(userLat, userLng);
+      map.setView([userLat, userLng], 15);
+      renderStores();
+      if(!silent) showToast('📍 Position mise à jour !');
+      else showToast('📍 Magasins autour de vous chargés !');
+      btns.forEach(btn => { btn.style.opacity = '1'; });
+    },
+    err => {
+      btns.forEach(btn => { btn.style.opacity = '1'; });
+      renderStores();
+
+      // Messages d'erreur précis selon le code
+      if(err.code === 1) {
+        // PERMISSION_DENIED
+        showPermissionHelp();
+      } else if(err.code === 2) {
+        // POSITION_UNAVAILABLE
+        if(!silent) showToast('⚠️ Position indisponible — vérifiez votre GPS.');
+      } else if(err.code === 3) {
+        // TIMEOUT
+        if(!silent) showToast('⏱️ Délai dépassé — réessayez en plein air.');
+        else {
+          // En mode silencieux (auto), réessayer une fois après 2s
+          setTimeout(() => doLocate(false), 2000);
+        }
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000
+    }
+  );
+}
+
+function showPermissionHelp(){
+  if(document.getElementById('permHelp')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'permHelp';
+  banner.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface);border:2px solid var(--accent2);border-radius:16px;padding:16px 18px;z-index:10001;font-family:\'Syne\',sans-serif;max-width:320px;width:calc(100% - 32px);box-shadow:var(--shadow)';
+
+  // Titre
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px';
+  head.innerHTML = '<span style="font-size:1.6rem">📍</span>'
+    + '<div>'
+    + '<div style="font-weight:800;font-size:.9rem">Localisation bloquée</div>'
+    + "<div style='font-size:.75rem;color:var(--muted)'>Autorisez l'accès pour voir les magasins près de vous</div>"
+    + '</div>';
+  banner.appendChild(head);
+
+  // Instructions
+  const info = document.createElement('div');
+  info.style.cssText = 'background:var(--bg);border-radius:10px;padding:10px;font-size:.78rem;color:var(--muted);line-height:1.7;margin-bottom:12px';
+  info.innerHTML = '<strong style="color:var(--text)">Sur Android :</strong><br>'
+    + "Appui long sur l'icône NearShop Drive →<br>"
+    + '<strong style="color:var(--accent)">Infos app → Autorisations → Localisation → Autoriser</strong>';
+  banner.appendChild(info);
+
+  // Boutons
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:8px';
+
+  const btnRetry = document.createElement('button');
+  btnRetry.textContent = 'Réessayer';
+  btnRetry.style.cssText = 'flex:1;padding:11px;background:var(--accent);color:#000;border:none;border-radius:9px;font-family:\'Syne\',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;touch-action:manipulation';
+  btnRetry.addEventListener('click', () => { banner.remove(); doLocate(false); });
+
+  const btnClose = document.createElement('button');
+  btnClose.textContent = 'Fermer';
+  btnClose.style.cssText = 'padding:11px 16px;background:var(--surface2);color:var(--muted);border:none;border-radius:9px;font-family:\'Syne\',sans-serif;font-weight:600;font-size:.85rem;cursor:pointer;touch-action:manipulation';
+  btnClose.addEventListener('click', () => banner.remove());
+
+  btns.appendChild(btnRetry);
+  btns.appendChild(btnClose);
+  banner.appendChild(btns);
+
+  document.body.appendChild(banner);
+  setTimeout(() => banner?.remove(), 20000);
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// deep link
+function checkDeepLink(){
+  const p=new URLSearchParams(location.search);
+  const sid=p.get('store');
+  if(sid){const s=stores.find(x=>x.id===sid);if(s)openStore(s);}
+}
+
+// ════════════════════════════════
+//  BOOT
+// ════════════════════════════════
+// ════════════════════════════════
+//  MOBILE FUNCTIONS
+// ════════════════════════════════
+let mobilePanelOpen = false;
+let _panelTransitioning = false; // garde contre les doubles clics pendant transition
+
+function mobileNav(tab) {
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  closeLocateMenu();
+  if (tab === 'explore') {
+    document.getElementById('mnavExplore').classList.add('active');
+    closeMobilePanel();
+    if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
+  } else if (tab === 'list') {
+    document.getElementById('mnavList').classList.add('active');
+    if (!mobilePanelOpen) openMobilePanel();
+    if (document.getElementById('adminView').classList.contains('visible')) switchView('user');
+  } else if (tab === 'user') {
+    if (currentUser) {
+      openMobileUserMenu(); // connecté → menu déconnexion
+    } else {
+      openUserAuth(); // non connecté → modal connexion
+    }
+  } else if (tab === 'admin') {
+    requireAdmin();
+  }
+}
+
+function toggleLocateMenu() {
+  const menu = document.getElementById('locateMenu');
+  menu.classList.toggle('hidden');
+  // Fermer si clic ailleurs
+  if (!menu.classList.contains('hidden')) {
+    setTimeout(() => {
+      document.addEventListener('click', closeLocateMenuOutside, { once: true });
+    }, 50);
+  }
+}
+function closeLocateMenu() {
+  document.getElementById('locateMenu')?.classList.add('hidden');
+}
+function closeLocateMenuOutside(e) {
+  const menu = document.getElementById('locateMenu');
+  const btn  = document.getElementById('mnavLocate');
+  if (menu && !menu.contains(e.target) && !btn?.contains(e.target)) {
+    closeLocateMenu();
+  }
+}
+
+function openMobilePanel() {
+  if (_panelTransitioning) return;
+  _panelTransitioning = true;
+  const panel = document.getElementById('mobilePanel');
+  panel.classList.add('open');
+  mobilePanelOpen = true;
+  renderStoresMobile();
+  setTimeout(() => { _panelTransitioning = false; }, 400);
+}
+
+function closeMobilePanel() {
+  if (_panelTransitioning) return;
+  _panelTransitioning = true;
+  const panel = document.getElementById('mobilePanel');
+  panel.classList.remove('open');
+  mobilePanelOpen = false;
+  // Remettre Explore actif, Magasins redevient cliquable
+  document.getElementById('mnavExplore').classList.add('active');
+  document.getElementById('mnavList').classList.remove('active');
+  setTimeout(() => { _panelTransitioning = false; }, 380);
+}
+
+function syncSearch(el) {
+  document.getElementById('searchInput').value = el.value;
+  document.getElementById('searchInputMobile').value = el.value;
+  renderStores();
+  renderStoresMobile();
+}
+
+function renderStoresMobile() {
+  const q = document.getElementById('searchInputMobile').value.toLowerCase();
+  const filtered = stores.filter(s => {
+    const d = dist(s); if(d > searchRadius) return false;
+    if(catFilter !== 'all' && s.cat !== catFilter) return false;
+    if(favFilter && !isFav(s.id)) return false;
+    if(q && !s.name.toLowerCase().includes(q) && !s.address.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a,b) => dist(a)-dist(b));
+
+  const badge = document.getElementById('countBadgeMobile');
+  if(badge) badge.textContent = filtered.length;
+
+  // Sync filter chips mobile
+  const cats = [...new Set(stores.filter(s=>dist(s)<=searchRadius).map(s=>s.cat))];
+  const frm = document.getElementById('filterRowMobile');
+  if(frm){
+    const mfavs=getFavs();
+    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
+    if(mfavs.length>0||currentUser){ frm.innerHTML+='<button class="filter-chip '+(favFilter?'active':'')+' " onclick="toggleFavFilter()" style="'+(favFilter?'':'border-color:#e53935;color:#e53935;')+'">❤️ Favoris'+(mfavs.length?` (${mfavs.length})`:'')+'</button>'; }
+    cats.forEach(c => {
+    const mfavs=getFavs();
+    frm.innerHTML='<button class="filter-chip '+(catFilter==='all'&&!favFilter?'active':'')+' " onclick="setCatFilter(this,\'all\');renderStoresMobile()" >Tous</button>';
+    if(mfavs.length>0||currentUser){ frm.innerHTML+='<button class="filter-chip '+(favFilter?'active':'')+' " onclick="toggleFavFilter()" style="'+(favFilter?'':'border-color:#e53935;color:#e53935;')+'">❤️ Favoris'+(mfavs.length?` (${mfavs.length})`:'')+'</button>'; }
+    });
+  }
+
+  const list = document.getElementById('storeListMobile');
+  if(!list) return;
+  if(!filtered.length){
+    list.innerHTML='<div class="no-stores"><div class="no-stores-icon">🏙️</div><h3>Aucun magasin</h3><p>Élargissez le rayon.</p></div>';
+    return;
+  }
+
+  // Reconstruire la liste proprement avec addEventListener (pas onclick inline)
+  list.innerHTML = '';
+  filtered.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = `store-card ${s.id===activeStoreId?'active':''}`;
+    div.style.animationDelay = `${i*.04}s`;
+    const avg = s.avgRating
+      ? starsHtml(s.avgRating)+` <span style="font-size:.72rem;color:var(--muted)">(${s.reviewCount||0})</span>`
+      : '';
+    div.innerHTML = `
+      <div class="card-top">
+        <div class="store-icon" style="background:${catBg(s.cat)}">${s.cat?s.cat.split(' ')[0]:''}</div>
+        <div class="card-info">
+          <div class="card-name">${s.name}</div>
+          <div class="card-cat">${s.cat?s.cat.replace(/^[^ ]+ /,''):''}</div>
+        </div>
+        <div class="card-dist">${distStr(s)}</div>
+      </div>
+      <div class="card-address">📍 ${s.address}</div>
+      <div class="card-footer">
+        <div class="open-badge">
+          <div class="open-dot ${s.status}"></div>
+          <span style="color:${s.status==='open'?'var(--green)':'var(--accent2)'}">${s.status==='open'?'Ouvert':'Fermé'}</span>
+        </div>
+        <div class="stars-mini">${avg}</div>
+      </div>`;
+
+    // ✅ addEventListener au lieu de onclick inline → pas de conflit de re-rendu
+    // Bouton favori
+    const mfavBtn = document.createElement("button");
+    mfavBtn.className = "fav-btn";
+    mfavBtn.innerHTML = isFav(s.id) ? "❤️" : "🤍";
+    mfavBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleFav(s.id, e); });
+    const mfooter = div.querySelector(".card-footer");
+    if(mfooter) mfooter.appendChild(mfavBtn); else div.appendChild(mfavBtn);
+    const storeRef = {...s}; // capture propre pour le closure
+    div.addEventListener('click', () => {
+      if(_panelTransitioning) return; // ignorer si en cours de transition
+      closeMobilePanel();
+      // Délai court pour laisser l'animation de fermeture démarrer
+      setTimeout(() => openStore(storeRef), 50);
+    }, { once: false });
+
+    list.appendChild(div);
+  });
+}
+
+// ════════════════════════════════
+//  PWA — MANIFEST + SERVICE WORKER
+// ════════════════════════════════
+function setupPWA() {
+  // ── Service Worker externe (sw.js) ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(reg => {
+        console.log('[NearShop] Service Worker enregistré ✅', reg.scope);
+        // Vérifier les mises à jour
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateBanner(reg);
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[NearShop] SW registration failed:', err));
+  }
+
+  // ── Prompt installation (Android Chrome) ──
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    window._pwaPrompt = e;
+    showInstallBanner(e);
+  });
+
+  // ── iOS : hint installation manuelle ──
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !isStandalone) {
+    setTimeout(() => showIOSHint(), 3000);
+  }
+}
+
+function showUpdateBanner(reg) {
+  const banner = document.createElement('div');
+  banner.style.cssText = `position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:12px 18px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);font-family:'Syne',sans-serif;max-width:320px;width:calc(100% - 32px)`;
+  banner.innerHTML = `
+    <span style="font-size:1.4rem">🔄</span>
+    <div style="flex:1"><div style="font-weight:700;font-size:.85rem">Mise à jour disponible</div><div style="font-size:.73rem;color:var(--muted)">Rechargez pour profiter des nouveautés</div></div>
+    <button onclick='reg.waiting.postMessage({type:'SKIP_WAITING'});location.reload()" style='background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 12px;font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;cursor:pointer">Mettre à jour</button>
+    <button onclick='this.closest('div').remove()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem">✕</button>`;
+  document.body.appendChild(banner);
+}
+
+function showIOSHint() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  if (isStandalone) return;
+  const hint = document.createElement('div');
+  hint.style.cssText = `position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:14px 18px;z-index:9999;font-family:'Syne',sans-serif;max-width:300px;width:calc(100% - 32px);text-align:center;box-shadow:var(--shadow)`;
+  hint.innerHTML = `
+    <div style="font-size:1.5rem;margin-bottom:8px">📲</div>
+    <div style="font-weight:700;font-size:.88rem;margin-bottom:5px">Installer NearShop Drive</div>
+    <div style="font-size:.78rem;color:var(--muted);line-height:1.5">Appuyez sur <strong style="color:var(--text)">□↑</strong> puis <strong style="color:var(--text)">'Sur l'écran d'accueil"</strong></div>
+    <button onclick='this.closest('div').remove()" style='margin-top:10px;background:var(--surface2);border:none;border-radius:8px;padding:6px 16px;color:var(--muted);font-family:'Syne',sans-serif;cursor:pointer;font-size:.78rem">Fermer</button>`;
+  document.body.appendChild(hint);
+  setTimeout(() => hint.remove(), 10000);
+}
+
+function showInstallBanner(promptEvent) {
+  // Supprimer une ancienne bannière si elle existe
+  const old = document.getElementById('pwaInstallBanner');
+  if (old) old.remove();
+
+  window._pwaPrompt = promptEvent;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwaInstallBanner';
+  banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:12px 18px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);font-family:\'Syne\',sans-serif;max-width:320px;width:calc(100% - 32px);animation:slideIn .3s ease';
+
+  // Créer les éléments proprement sans innerHTML corrompu
+  const icon = document.createElement('span');
+  icon.style.fontSize = '1.6rem';
+  icon.textContent = '📲';
+
+  const text = document.createElement('div');
+  text.style.flex = '1';
+  text.innerHTML = '<div style="font-weight:700;font-size:.88rem">Installer NearShop Drive</div>'
+    + "<div style='font-size:.75rem;color:var(--muted)'>Accès rapide depuis votre écran d'accueil</div>";
+
+  const btnInstall = document.createElement('button');
+  btnInstall.textContent = 'Installer';
+  btnInstall.style.cssText = 'background:var(--accent);color:#000;border:none;border-radius:8px;padding:7px 13px;font-family:\'Syne\',sans-serif;font-weight:700;font-size:.78rem;cursor:pointer;flex-shrink:0';
+  btnInstall.addEventListener('click', () => installPWA(banner));
+
+  const btnClose = document.createElement('button');
+  btnClose.textContent = '✕';
+  btnClose.style.cssText = 'background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;flex-shrink:0';
+  btnClose.addEventListener('click', () => banner.remove());
+
+  banner.appendChild(icon);
+  banner.appendChild(text);
+  banner.appendChild(btnInstall);
+  banner.appendChild(btnClose);
+  document.body.appendChild(banner);
+
+  // Auto-disparaît après 15s
+  setTimeout(() => banner?.remove(), 15000);
+}
+
+async function installPWA(banner) {
+  const prompt = window._pwaPrompt;
+  if (!prompt) {
+    showToast('⚠️ Ouvrez dans Chrome pour installer');
+    return;
+  }
+  try {
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === 'accepted') {
+      showToast('✅ NearShop Drive installé !');
+    } else {
+      showToast('Installation annulée');
+    }
+  } catch(e) {
+    console.warn('Install error:', e);
+  }
+  banner?.remove();
+  window._pwaPrompt = null;
+}
+
+window.addEventListener('load', () => {
+  initMap();
+  applyLang();
+  initFirebase();   // ← lance Firebase dès que prêt (polling 100ms)
+  initPlacePicker();
+  setupPWA();
+
+  // Localisation auto
+  setTimeout(() => locateUser(true), 600);
+
+  // Fallback : si Firebase ne répond pas après 5s → afficher carte vide
+  setTimeout(() => {
+    if (!stores.length) {
+      console.warn('[NearShop] Firebase timeout — affichage sans données');
+      renderStores();
+    }
+    checkDeepLink();
+  }, 5000);
+
+  // ── Vider le cache SW si paramètre ?clearcache dans l'URL ──
+  if (location.search.includes('clearcache')) {
+    if ('caches' in window) {
+      caches.keys().then(keys => {
+        keys.forEach(k => caches.delete(k));
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => r.unregister());
+          showToast('🗑️ Cache vidé ! Rechargement...');
+          setTimeout(() => location.href = location.pathname, 1500);
+        });
+      });
+    }
+  }
+});
+</script>
+</body>
+</html>

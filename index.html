@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NearShop Drive — Livraison à votre voiture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #080b12;
+  --surface: #111620;
+  --surface2:#161d2e;
+  --border:  #1e2840;
+  --accent:  #f0c040;
+  --accent2: #e53935;
+  --green:   #3dffa0;
+  --text:    #eef0f5;
+  --muted:   #5a6680;
+  --muted2:  #8090aa;
+}
+
+html { scroll-behavior: smooth; max-width: 100%; overflow-x: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* ── NOISE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: .018;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 20px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(20px);
+  background: rgba(8,11,18,.8);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: -.01em;
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.nav-logo .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.nav-logo span { color: var(--accent); }
+.nav-cta {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  padding: 9px 18px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .82rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(240,192,64,.35); }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Radial glow */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -55%);
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(240,192,64,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Grid bg */
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  opacity: .4;
+}
+
+.hero-content { position: relative; z-index: 1; max-width: 780px; width: 100%; padding: 0 4px; }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(240,192,64,.1);
+  border: 1px solid rgba(240,192,64,.3);
+  border-radius: 50px;
+  padding: 6px 16px;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  animation: fadeUp .6s ease both;
+}
+.hero-badge .pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(.6); }
+}
+
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(2rem, 7vw, 5.5rem);
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  animation: fadeUp .6s .1s ease both;
+  padding: 0 8px;
+  word-break: break-word;
+}
+.hero h1 .gold { color: var(--accent); }
+.hero h1 .line2 { display: block; }
+
+.hero-sub {
+  font-size: clamp(.9rem, 3.5vw, 1.2rem);
+  color: var(--muted2);
+  max-width: 560px;
+  margin: 24px auto 0;
+  line-height: 1.7;
+  font-weight: 300;
+  animation: fadeUp .6s .2s ease both;
+  padding: 0 12px;
+  word-break: break-word;
+}
+
+.hero-actions {
+  display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+  margin-top: 44px;
+  animation: fadeUp .6s .3s ease both;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  padding: 15px 36px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(240,192,64,.4); }
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: 50px;
+  padding: 15px 36px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: .95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .2s, color .2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-outline:hover { border-color: var(--muted2); color: var(--text); }
+
+/* ── CAR ILLUSTRATION ── */
+.hero-visual {
+  margin-top: 64px;
+  animation: fadeUp .6s .4s ease both;
+  position: relative;
+}
+.car-scene {
+  display: inline-block;
+  position: relative;
+}
+.car-svg { width: min(500px, 90vw); }
+
+/* ── CONCEPT STRIP ── */
+.concept-strip {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 28px 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+.strip-inner {
+  display: flex;
+  gap: 60px;
+  white-space: nowrap;
+  animation: marquee 20s linear infinite;
+  width: max-content;
+}
+.strip-item {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .88rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.strip-item span { color: var(--accent); font-size: 1.1rem; }
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── SECTIONS ── */
+section { padding: 100px 24px; }
+.container { max-width: 1100px; margin: 0 auto; width: 100%; padding: 0 8px; }
+
+.section-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.section-label::before {
+  content: '';
+  display: block; width: 24px; height: 2px;
+  background: var(--accent);
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  margin-bottom: 20px;
+}
+.section-title .gold { color: var(--accent); }
+
+.section-desc {
+  font-size: 1.05rem;
+  color: var(--muted2);
+  max-width: 520px;
+  line-height: 1.75;
+  font-weight: 300;
+  word-break: break-word;
+}
+
+/* ── HOW IT WORKS ── */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2px;
+  margin-top: 64px;
+  background: var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.step-card {
+  background: var(--surface);
+  padding: 40px 32px;
+  position: relative;
+  transition: background .25s;
+}
+.step-card:hover { background: var(--surface2); }
+
+.step-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--border);
+  line-height: 1;
+  margin-bottom: 20px;
+  letter-spacing: -.04em;
+}
+.step-icon {
+  font-size: 2rem;
+  margin-bottom: 16px;
+  display: block;
+}
+.step-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+}
+.step-desc {
+  font-size: .88rem;
+  color: var(--muted2);
+  line-height: 1.65;
+}
+.step-accent {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background .25s;
+}
+.step-card:hover .step-accent { background: var(--accent); }
+
+/* ── CONCEPT ── */
+.concept-section { background: var(--surface); }
+
+.concept-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  margin-top: 64px;
+}
+@media (max-width: 768px) { .concept-layout { grid-template-columns: 1fr; gap: 40px; } }
+
+.concept-visual {
+  position: relative;
+  aspect-ratio: 1;
+  max-width: 440px;
+}
+
+/* Map mockup */
+.map-mockup {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #0d1420;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+.map-grid-lines {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.map-roads {
+  position: absolute; inset: 0;
+}
+.map-pin {
+  position: absolute;
+  top: 38%; left: 52%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+.pin-body {
+  width: 48px; height: 48px;
+  background: var(--accent2);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(229,57,53,.5);
+  animation: pinBounce 2s ease-in-out infinite;
+}
+.pin-body::after {
+  content: '';
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transform: rotate(45deg);
+}
+@keyframes pinBounce {
+  0%, 100% { transform: rotate(-45deg) translateY(0); }
+  50% { transform: rotate(-45deg) translateY(-6px); }
+}
+
+/* Shop dots */
+.shop-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: shopPulse 3s ease-in-out infinite;
+}
+@keyframes shopPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .6; transform: scale(.85); }
+}
+.shop-dot::after {
+  content: '';
+  position: absolute; inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(240,192,64,.3);
+  animation: ringExpand 2s ease-out infinite;
+}
+@keyframes ringExpand {
+  from { opacity: 1; transform: scale(.6); }
+  to   { opacity: 0; transform: scale(2); }
+}
+
+.map-car {
+  position: absolute;
+  bottom: 22%; left: 18%;
+  font-size: 1.6rem;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.5));
+  animation: carMove 4s ease-in-out infinite;
+}
+@keyframes carMove {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(18px); }
+}
+
+.whatsapp-bubble {
+  position: absolute;
+  top: 8%; right: -10%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 16px 16px 16px 4px;
+  padding: 12px 16px;
+  font-size: .78rem;
+  color: var(--text);
+  white-space: nowrap;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  animation: float 3s ease-in-out infinite;
+}
+.whatsapp-bubble .wa-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+  color: #25D366;
+  font-weight: 600;
+  font-size: .72rem;
+}
+.whatsapp-bubble .wa-text { color: var(--muted2); }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.payment-bubble {
+  position: absolute;
+  bottom: 5%; right: -8%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  animation: float 3.5s 1s ease-in-out infinite;
+}
+.payment-amount {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+.payment-label { font-size: .72rem; color: var(--muted2); margin-bottom: 8px; }
+.payment-methods { display: flex; gap: 6px; }
+.pay-pill {
+  background: rgba(255,255,255,.06);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: .7rem;
+  color: var(--muted2);
+  font-weight: 500;
+}
+
+/* Concept points */
+.concept-points { display: flex; flex-direction: column; gap: 28px; }
+.concept-point {
+  display: flex; gap: 16px;
+  align-items: flex-start;
+}
+.cp-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: rgba(240,192,64,.1);
+  border: 1px solid rgba(240,192,64,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cp-content h3 {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .95rem;
+  margin-bottom: 4px;
+}
+.cp-content p { font-size: .88rem; color: var(--muted2); line-height: 1.6; word-break: break-word; }
+
+/* ── FEATURES ── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 60px;
+}
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  transition: border-color .25s, transform .25s;
+  position: relative;
+  overflow: hidden;
+}
+.feature-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity .25s;
+}
+.feature-card:hover { border-color: rgba(240,192,64,.3); transform: translateY(-4px); }
+.feature-card:hover::before { opacity: 1; }
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  display: block;
+}
+.feature-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+.feature-desc { font-size: .88rem; color: var(--muted2); line-height: 1.65; }
+
+/* ── CTA ── */
+.cta-section {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  padding: 100px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(240,192,64,.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-section .section-title { max-width: 600px; margin: 0 auto 16px; }
+.cta-section .section-desc { margin: 0 auto 44px; text-align: center; }
+
+/* ── FOOTER ── */
+footer {
+  padding: 32px 48px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+}
+.footer-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: .95rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.footer-logo span { color: var(--accent); }
+.footer-copy { font-size: .8rem; color: var(--muted); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  opacity: 0; transform: translateY(32px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  nav { padding: 14px 16px; }
+  .nav-logo { font-size: 1rem; }
+  section { padding: 60px 16px; }
+  .whatsapp-bubble, .payment-bubble { display: none; }
+  footer { padding: 24px 16px; flex-direction: column; text-align: center; }
+  .hero { padding: 90px 12px 60px; }
+  .hero-badge { font-size: .7rem; padding: 5px 12px; }
+  .steps-grid { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .concept-layout { grid-template-columns: 1fr; gap: 40px; }
+  .concept-visual { max-width: 100%; }
+  .map-mockup { max-width: 100%; }
+  .hero h1 { font-size: clamp(2.2rem, 9vw, 3.5rem); }
+  .hero-actions { flex-direction: column; align-items: center; }
+  .btn-primary, .btn-outline { width: 100%; max-width: 320px; justify-content: center; }
+  .container { padding: 0 4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="dot"></div>
+    Near<span>Shop</span> Drive
+  </div>
+  <a href="app.html" class="nav-cta" target="_blank">Ouvrir l'app →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="pulse"></div>
+      Nouvelle façon de faire ses courses
+    </div>
+    <h1>
+      Commandez sans<br>
+      <span class="gold">quitter votre voiture</span>
+    </h1>
+    <p class="hero-sub">
+      NearShop Drive répertorie les commerces locaux qui livrent directement à votre véhicule. Localisez, sélectionnez, commandez via WhatsApp — et restez confortablement installé.
+    </p>
+    <div class="hero-actions">
+      <a href="app.html" class="btn-primary" target="_blank">
+        🗺️ Trouver un magasin
+      </a>
+      <a href="#comment" class="btn-outline">
+        Comment ça marche
+      </a>
+    </div>
+
+    <!-- Car + map visual -->
+    <div class="hero-visual">
+      <svg class="car-svg" viewBox="0 0 500 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Route -->
+        <rect x="0" y="155" width="500" height="45" fill="#111620" rx="4"/>
+        <line x1="0" y1="177" x2="160" y2="177" stroke="#1e2840" stroke-width="3" stroke-dasharray="24 16"/>
+        <line x1="200" y1="177" x2="500" y2="177" stroke="#1e2840" stroke-width="3" stroke-dasharray="24 16"/>
+
+        <!-- Voiture corps -->
+        <rect x="80" y="110" width="220" height="50" rx="12" fill="#161d2e" stroke="#1e2840" stroke-width="1.5"/>
+        <!-- Toit -->
+        <path d="M130 110 Q160 72 230 72 Q280 72 310 110Z" fill="#1a2236" stroke="#1e2840" stroke-width="1.5"/>
+        <!-- Vitre avant -->
+        <path d="M240 78 Q270 75 305 108 L240 108Z" fill="#0d3a5a" opacity=".9"/>
+        <!-- Vitre arrière -->
+        <path d="M140 78 Q165 74 235 108 L140 108Z" fill="#0d3a5a" opacity=".8"/>
+        <!-- Pilier -->
+        <line x1="238" y1="72" x2="238" y2="110" stroke="#1e2840" stroke-width="2"/>
+
+        <!-- Roues -->
+        <circle cx="135" cy="158" r="22" fill="#0d1117" stroke="#2a3550" stroke-width="3"/>
+        <circle cx="135" cy="158" r="10" fill="#1a2236" stroke="#f0c040" stroke-width="2"/>
+        <circle cx="135" cy="158" r="3" fill="#f0c040"/>
+        <circle cx="310" cy="158" r="22" fill="#0d1117" stroke="#2a3550" stroke-width="3"/>
+        <circle cx="310" cy="158" r="10" fill="#1a2236" stroke="#f0c040" stroke-width="2"/>
+        <circle cx="310" cy="158" r="3" fill="#f0c040"/>
+
+        <!-- Feux avant -->
+        <ellipse cx="296" cy="130" rx="8" ry="5" fill="#f0c040" opacity=".9"/>
+        <path d="M300 125 L340 110 L340 115 L300 130Z" fill="url(#beam)" opacity=".3"/>
+        <defs>
+          <linearGradient id="beam" x1="300" y1="117" x2="340" y2="117">
+            <stop offset="0" stop-color="#f0c040"/>
+            <stop offset="1" stop-color="#f0c040" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Feux arrière -->
+        <ellipse cx="88" cy="130" rx="6" ry="4" fill="#e53935" opacity=".8"/>
+
+        <!-- Livreur avec sac -->
+        <circle cx="420" cy="95" r="18" fill="#1a2236" stroke="#f0c040" stroke-width="2"/>
+        <text x="420" y="100" text-anchor="middle" font-size="16">🛍️</text>
+        <!-- Ligne tirets livreur → voiture -->
+        <line x1="402" y1="115" x2="298" y2="130" stroke="#f0c040" stroke-width="1.5" stroke-dasharray="8 5" opacity=".5"/>
+
+        <!-- Badge magasin -->
+        <rect x="390" y="35" width="90" height="36" rx="10" fill="#f0c040"/>
+        <text x="435" y="57" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="12" fill="#000">MAGASIN</text>
+
+        <!-- WhatsApp icon flottant -->
+        <circle cx="195" cy="55" r="18" fill="#25D366"/>
+        <text x="195" y="61" text-anchor="middle" font-size="14">💬</text>
+        <line x1="195" y1="73" x2="200" y2="108" stroke="#25D366" stroke-width="1.5" stroke-dasharray="5 4" opacity=".6"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- STRIP -->
+<div class="concept-strip">
+  <div class="strip-inner">
+    <div class="strip-item"><span>📍</span> Localisez-vous</div>
+    <div class="strip-item"><span>🏪</span> Magasins proches</div>
+    <div class="strip-item"><span>💬</span> Commandez via WhatsApp</div>
+    <div class="strip-item"><span>🚗</span> Livré à votre voiture</div>
+    <div class="strip-item"><span>💵</span> Cash ou paiement mobile</div>
+    <div class="strip-item"><span>⭐</span> Notez le service</div>
+    <!-- doublé pour boucle infinie -->
+    <div class="strip-item"><span>📍</span> Localisez-vous</div>
+    <div class="strip-item"><span>🏪</span> Magasins proches</div>
+    <div class="strip-item"><span>💬</span> Commandez via WhatsApp</div>
+    <div class="strip-item"><span>🚗</span> Livré à votre voiture</div>
+    <div class="strip-item"><span>💵</span> Cash ou paiement mobile</div>
+    <div class="strip-item"><span>⭐</span> Notez le service</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="comment">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Comment ça marche</div>
+      <h2 class="section-title">4 étapes, <span class="gold">zéro effort</span></h2>
+      <p class="section-desc">Du parking au produit dans votre main — sans sortir de votre siège.</p>
+    </div>
+    <div class="steps-grid reveal">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <span class="step-icon">📍</span>
+        <div class="step-title">Localisez-vous</div>
+        <p class="step-desc">Activez votre GPS ou cherchez une ville. La carte affiche tous les commerces participants dans votre rayon de recherche.</p>
+        <div class="step-accent"></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <span class="step-icon">🏪</span>
+        <div class="step-title">Choisissez un magasin</div>
+        <p class="step-desc">Consultez la fiche du commerce : horaires, catégorie, avis clients, distance. Ajoutez vos favoris pour les retrouver facilement.</p>
+        <div class="step-accent"></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <span class="step-icon">💬</span>
+        <div class="step-title">Commandez via WhatsApp</div>
+        <p class="step-desc">Un tap sur le numéro WhatsApp du magasin ouvre directement la conversation. Donnez votre commande et attendez la confirmation.</p>
+        <div class="step-accent"></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">04</div>
+        <span class="step-icon">🚗</span>
+        <div class="step-title">Récupérez à votre voiture</div>
+        <p class="step-desc">Le commerçant vient jusqu'à vous. Payez en cash ou par paiement mobile — sans jamais quitter votre véhicule.</p>
+        <div class="step-accent"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONCEPT -->
+<section class="concept-section" id="concept">
+  <div class="container">
+    <div class="concept-layout">
+      <div class="reveal">
+        <div class="section-label">Le concept</div>
+        <h2 class="section-title">Le <span class="gold">drive</span> réinventé pour les petits commerces</h2>
+        <div class="concept-points" style="margin-top: 36px;">
+          <div class="concept-point">
+            <div class="cp-icon">🗺️</div>
+            <div class="cp-content">
+              <h3>Carte interactive en temps réel</h3>
+              <p>Visualisez tous les commerces participants autour de vous. Filtrez par catégorie, distance, statut ouvert/fermé.</p>
+            </div>
+          </div>
+          <div class="concept-point">
+            <div class="cp-icon">💬</div>
+            <div class="cp-content">
+              <h3>Commande directe sans intermédiaire</h3>
+              <p>Pas d'app supplémentaire, pas de commission. Vous contactez le commerçant directement sur WhatsApp — la relation est directe et humaine.</p>
+            </div>
+          </div>
+          <div class="concept-point">
+            <div class="cp-icon">💵</div>
+            <div class="cp-content">
+              <h3>Paiement flexible</h3>
+              <p>Cash ou paiement mobile — le commerçant vous communique le montant exact avant de venir. Pas de surprise.</p>
+            </div>
+          </div>
+          <div class="concept-point">
+            <div class="cp-icon">⭐</div>
+            <div class="cp-content">
+              <h3>Communauté d'avis</h3>
+              <p>Chaque utilisateur peut noter et commenter les commerces. La qualité de service est visible par tous.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAP MOCKUP -->
+      <div class="reveal" style="display: flex; justify-content: center;">
+        <div class="concept-visual">
+          <div class="map-mockup">
+            <div class="map-grid-lines"></div>
+            <svg class="map-roads" viewBox="0 0 440 440" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Routes principales -->
+              <line x1="0" y1="220" x2="440" y2="220" stroke="#1a2540" stroke-width="16"/>
+              <line x1="220" y1="0" x2="220" y2="440" stroke="#1a2540" stroke-width="16"/>
+              <!-- Routes secondaires -->
+              <line x1="0" y1="140" x2="440" y2="140" stroke="#141c2e" stroke-width="8"/>
+              <line x1="0" y1="300" x2="440" y2="300" stroke="#141c2e" stroke-width="8"/>
+              <line x1="140" y1="0" x2="140" y2="440" stroke="#141c2e" stroke-width="8"/>
+              <line x1="300" y1="0" x2="300" y2="440" stroke="#141c2e" stroke-width="8"/>
+              <!-- Marquages -->
+              <line x1="0" y1="220" x2="440" y2="220" stroke="#1e2840" stroke-width="1" stroke-dasharray="20 15"/>
+              <line x1="220" y1="0" x2="220" y2="440" stroke="#1e2840" stroke-width="1" stroke-dasharray="20 15"/>
+              <!-- Blocs bâtiments -->
+              <rect x="30" y="30" width="90" height="90" rx="6" fill="#111820"/>
+              <rect x="160" y="30" width="45" height="90" rx="4" fill="#111820"/>
+              <rect x="230" y="30" width="55" height="90" rx="4" fill="#111820"/>
+              <rect x="310" y="50" width="110" height="70" rx="6" fill="#111820"/>
+              <rect x="30" y="160" width="90" height="45" rx="4" fill="#111820"/>
+              <rect x="30" y="230" width="90" height="50" rx="4" fill="#111820"/>
+              <rect x="30" y="310" width="90" height="100" rx="6" fill="#111820"/>
+              <rect x="160" y="160" width="40" height="40" rx="4" fill="#111820"/>
+              <rect x="310" y="160" width="110" height="40" rx="4" fill="#111820"/>
+              <rect x="310" y="230" width="110" height="110" rx="6" fill="#111820"/>
+              <rect x="160" y="310" width="120" height="100" rx="6" fill="#111820"/>
+              <!-- Parc -->
+              <rect x="160" y="230" width="120" height="50" rx="4" fill="#0d1f18"/>
+            </svg>
+            <!-- Pin user -->
+            <div class="map-pin">
+              <div class="pin-body"></div>
+            </div>
+            <!-- Shops -->
+            <div class="shop-dot" style="width:14px;height:14px;top:22%;left:35%;animation-delay:.3s"></div>
+            <div class="shop-dot" style="width:12px;height:12px;top:58%;left:72%;animation-delay:.8s"></div>
+            <div class="shop-dot" style="width:13px;height:13px;top:75%;left:28%;animation-delay:1.3s"></div>
+            <div class="shop-dot" style="width:11px;height:11px;top:30%;left:70%;animation-delay:.5s"></div>
+            <!-- Voiture -->
+            <div class="map-car">🚗</div>
+          </div>
+
+          <!-- WhatsApp bubble -->
+          <div class="whatsapp-bubble">
+            <div class="wa-header">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.138.563 4.14 1.547 5.874L0 24l6.273-1.519A11.934 11.934 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.032-1.388l-.36-.214-3.733.904.946-3.629-.235-.374A9.818 9.818 0 012.182 12C2.182 6.573 6.573 2.182 12 2.182S21.818 6.573 21.818 12 17.427 21.818 12 21.818z"/></svg>
+              Boulangerie Cavdar
+            </div>
+            <div class="wa-text">Bonjour, je voudrais 2 baguettes 🥖</div>
+          </div>
+
+          <!-- Payment bubble -->
+          <div class="payment-bubble">
+            <div class="payment-label">Montant à payer</div>
+            <div class="payment-amount">3,80 €</div>
+            <div class="payment-methods">
+              <div class="pay-pill">💵 Cash</div>
+              <div class="pay-pill">📱 Mobile</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Fonctionnalités</div>
+      <h2 class="section-title">Tout pour <span class="gold">simplifier</span> vos courses</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <span class="feature-icon">🔍</span>
+        <div class="feature-title">Recherche par rayon</div>
+        <p class="feature-desc">Définissez votre rayon de recherche (1 à 20 km) et voyez tous les commerces disponibles autour de vous.</p>
+      </div>
+      <div class="feature-card reveal">
+        <span class="feature-icon">❤️</span>
+        <div class="feature-title">Favoris</div>
+        <p class="feature-desc">Sauvegardez vos commerces préférés pour les retrouver en un tap. Créez votre liste personnelle.</p>
+      </div>
+      <div class="feature-card reveal">
+        <span class="feature-icon">⭐</span>
+        <div class="feature-title">Avis & notes</div>
+        <p class="feature-desc">Lisez et déposez des avis sur les commerces. La note moyenne est visible directement sur la carte.</p>
+      </div>
+      <div class="feature-card reveal">
+        <span class="feature-icon">🕐</span>
+        <div class="feature-title">Horaires en temps réel</div>
+        <p class="feature-desc">Chaque fiche affiche les horaires d'ouverture et indique si le commerce est ouvert ou fermé en ce moment.</p>
+      </div>
+      <div class="feature-card reveal">
+        <span class="feature-icon">🌍</span>
+        <div class="feature-title">Multi-ville</div>
+        <p class="feature-desc">Pas de GPS ? Recherchez n'importe quelle ville pour planifier vos courses à l'avance.</p>
+      </div>
+      <div class="feature-card reveal">
+        <span class="feature-icon">📱</span>
+        <div class="feature-title">PWA installable</div>
+        <p class="feature-desc">Installez NearShop Drive comme une vraie app sur votre téléphone. Fonctionne aussi hors ligne.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label" style="justify-content: center;">Prêt ?</div>
+      <h2 class="section-title">Essayez maintenant,<br><span class="gold">c'est gratuit</span></h2>
+      <p class="section-desc">Aucune inscription nécessaire pour explorer la carte. Connectez-vous pour sauvegarder vos favoris.</p>
+      <div class="hero-actions" style="margin-top: 36px;">
+        <a href="app.html" class="btn-primary" target="_blank">
+          🗺️ Ouvrir NearShop Drive
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <div class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></div>
+    Near<span>Shop</span> Drive
+  </div>
+  <div class="footer-copy">© 2026 NearShop Drive — Tous droits réservés</div>
+</footer>
+
+<script>
+// Smart redirect : si déjà visité → aller directement à l'app
+if (localStorage.getItem('nearshop_visited')) {
+  window.location.replace('app.html');
+}
+// Marquer comme visité quand on clique sur l'app
+document.addEventListener('click', function(e) {
+  if (e.target.closest('a[href="app.html"]')) {
+    localStorage.setItem('nearshop_visited', '1');
+  }
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
