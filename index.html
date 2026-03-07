@@ -702,6 +702,53 @@ section { padding: 100px 24px; }
   margin-top: 10px;
   display: none;
 }
+/* Zone upload photo */
+.photo-upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  position: relative;
+  overflow: hidden;
+}
+.photo-upload-zone:hover, .photo-upload-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(240,192,64,.05);
+}
+.photo-upload-zone input[type=file] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.photo-upload-icon { font-size: 2rem; margin-bottom: 8px; }
+.photo-upload-text { font-size: .82rem; color: var(--muted2); line-height: 1.5; }
+.photo-upload-text strong { color: var(--accent); }
+.photo-preview {
+  display: none;
+  margin-top: 12px;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.photo-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.photo-preview-remove {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0,0,0,.7); border: none;
+  border-radius: 50%; width: 28px; height: 28px;
+  color: #fff; cursor: pointer; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.photo-size-warn {
+  font-size: .72rem; color: var(--accent2);
+  margin-top: 6px; display: none;
+}
 
 /* ── PANNEAU CONFIG SECRET ── */
 .secret-panel {
@@ -1238,7 +1285,7 @@ footer {
               <input class="mf-input" id="mf-phone" placeholder="+32 2 000 00 00" type="tel">
             </div>
             <div class="mf-group">
-              <label class="mf-label">WhatsApp</label>
+              <label class="mf-label">WhatsApp *</label>
               <input class="mf-input" id="mf-whatsapp" placeholder="+32 470 00 00 00" type="tel">
             </div>
           </div>
@@ -1256,6 +1303,28 @@ footer {
           <div class="mf-group">
             <label class="mf-label">Description / Message</label>
             <textarea class="mf-textarea" id="mf-desc" placeholder="Décrivez vos produits, votre service drive..."></textarea>
+          </div>
+
+          <div class="mf-group">
+            <label class="mf-label">📸 Photo du commerce <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optionnelle, max 5 Mo)</span></label>
+            <div class="photo-upload-zone" id="photoZone"
+                 ondragover="event.preventDefault();this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handlePhotoDrop(event)">
+              <input type="file" id="mf-photo" accept="image/*" onchange="handlePhotoSelect(event)">
+              <div id="photoPlaceholder">
+                <div class="photo-upload-icon">🏪</div>
+                <div class="photo-upload-text">
+                  <strong>Cliquez ou glissez</strong> une photo de votre commerce<br>
+                  JPG, PNG, WEBP — max 5 Mo
+                </div>
+              </div>
+              <div class="photo-preview" id="photoPreview">
+                <img id="photoPreviewImg" src="" alt="Aperçu">
+                <button class="photo-preview-remove" onclick="removePhoto(event)" title="Supprimer">✕</button>
+              </div>
+            </div>
+            <div class="photo-size-warn" id="photoSizeWarn">⚠️ Image trop grande (max 5 Mo)</div>
           </div>
 
           <div class="mf-error" id="mfError"></div>
@@ -1331,6 +1400,46 @@ document.addEventListener('click', function(e) {
 // ── GSHEET URL pour commerçants (même script, feuille différente) ──
 const MERCHANT_SHEET_URL = localStorage.getItem('nearshop_merchant_sheet') || null;
 
+// ── Gestion photo ──
+let merchantPhotoBase64 = null;
+
+function handlePhotoSelect(e) {
+  const file = e.target.files[0];
+  if (file) processPhoto(file);
+}
+function handlePhotoDrop(e) {
+  e.preventDefault();
+  document.getElementById('photoZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) processPhoto(file);
+}
+function processPhoto(file) {
+  const warn = document.getElementById('photoSizeWarn');
+  if (file.size > 5 * 1024 * 1024) {
+    warn.style.display = 'block';
+    merchantPhotoBase64 = null;
+    return;
+  }
+  warn.style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    merchantPhotoBase64 = e.target.result;
+    document.getElementById('photoPlaceholder').style.display = 'none';
+    const preview = document.getElementById('photoPreview');
+    preview.style.display = 'block';
+    document.getElementById('photoPreviewImg').src = merchantPhotoBase64;
+  };
+  reader.readAsDataURL(file);
+}
+function removePhoto(e) {
+  e.stopPropagation();
+  merchantPhotoBase64 = null;
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoPlaceholder').style.display = 'block';
+  document.getElementById('mf-photo').value = '';
+}
+
+// ── Envoi formulaire ──
 async function submitMerchant() {
   const btn = document.getElementById('mfSubmit');
   const err = document.getElementById('mfError');
@@ -1345,8 +1454,14 @@ async function submitMerchant() {
   const hours    = document.getElementById('mf-hours').value.trim();
   const desc     = document.getElementById('mf-desc').value.trim();
 
-  if (!name || !cat || !address || !phone || !email) {
+  // Validation
+  if (!name || !cat || !address || !phone || !whatsapp || !email) {
     err.textContent = '⚠️ Veuillez remplir tous les champs obligatoires (*)';
+    err.style.display = 'block';
+    return;
+  }
+  if (!whatsapp.startsWith('+')) {
+    err.textContent = '⚠️ WhatsApp : utilisez le format international (ex: +32 470 00 00 00)';
     err.style.display = 'block';
     return;
   }
@@ -1359,13 +1474,32 @@ async function submitMerchant() {
   btn.disabled = true;
   btn.textContent = '⏳ Envoi en cours...';
 
-  const sheetUrl = localStorage.getItem('nearshop_merchant_sheet');
+  // Upload photo vers Cloudinary si présente
+  let photoUrl = '';
+  if (merchantPhotoBase64) {
+    try {
+      btn.textContent = '📸 Upload photo...';
+      const fd = new FormData();
+      fd.append('file', merchantPhotoBase64);
+      fd.append('upload_preset', 'nearshop');
+      fd.append('folder', 'nearshop/merchants');
+      const res = await fetch('https://api.cloudinary.com/v1_1/dd2fsaqvl/image/upload', {
+        method: 'POST', body: fd
+      });
+      const data = await res.json();
+      photoUrl = data.secure_url || '';
+    } catch(e) { console.warn('Photo upload:', e); }
+  }
 
+  btn.textContent = '⏳ Envoi en cours...';
+
+  const sheetUrl = localStorage.getItem('nearshop_merchant_sheet');
   if (sheetUrl) {
     try {
       const params = new URLSearchParams({
         type: 'merchant',
         name, cat, address, phone, whatsapp, email, hours, desc,
+        photoUrl,
         submittedAt: new Date().toISOString(),
         status: 'EN ATTENTE'
       });
