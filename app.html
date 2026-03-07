@@ -108,6 +108,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
   .logo{font-size:1.1rem;}
   .nav-tabs{display:none;}
   .header-right{gap:6px;}
+  .about-label{display:none;}
   .locate-btn span{display:none;}
   .locate-btn{padding:0 12px;}
   .lang-btn{padding:0 9px;font-size:.72rem;}
@@ -589,6 +590,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   </div>
 
   <div class="header-right">
+    <a href="index.html" class="lang-btn about-btn" title="À propos de NearShop Drive" style="text-decoration:none;display:flex;align-items:center;gap:5px;">ℹ️ <span class="about-label">About</span></a>
     <button class="lang-btn" onclick="cycleLang()">🌍 <span id="langLabel">FR</span></button>
     <button class="icon-btn" onclick="toggleTheme()" title="Thème">🌗</button>
     <button class="locate-btn" onclick="locateUser(false)">
