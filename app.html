@@ -582,7 +582,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
 
 <!-- ══ HEADER ══ -->
 <header>
-  <div class="logo" style="cursor:pointer" onclick="window.open('index.html','_self')"><div class="logo-dot"></div>Near<span>Shop Drive</span></div>
+  <div class="logo"><div class="logo-dot"></div>Near<span>Shop Drive</span></div>
 
   <div class="nav-tabs">
     <button class="nav-tab active" id="tabExplore" onclick="switchView('user')">🗺️ <span data-i18n="explore">Explorer</span></button>
@@ -590,7 +590,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
   </div>
 
   <div class="header-right">
-    <a href="index.html" class="lang-btn about-btn" title="À propos de NearShop Drive" style="text-decoration:none;display:flex;align-items:center;gap:5px;">ℹ️ <span class="about-label">About</span></a>
+    <button class="lang-btn about-btn" title="À propos de NearShop Drive" onclick="window.location.href='index.html'" style="display:flex;align-items:center;gap:5px;cursor:pointer;">ℹ️ <span class="about-label">About</span></button>
     <button class="lang-btn" onclick="cycleLang()">🌍 <span id="langLabel">FR</span></button>
     <button class="icon-btn" onclick="toggleTheme()" title="Thème">🌗</button>
     <button class="locate-btn" onclick="locateUser(false)">
