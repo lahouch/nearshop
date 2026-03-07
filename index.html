@@ -955,13 +955,15 @@ footer {
 </footer>
 
 <script>
-// Smart redirect : si déjà visité → aller directement à l'app
-if (localStorage.getItem('nearshop_visited')) {
+// Smart redirect : si déjà visité ET qu'on ne vient pas de l'app → rediriger
+const comingFromApp = document.referrer.includes('app.html') 
+                   || window.location.search.includes('from=app');
+if (localStorage.getItem('nearshop_visited') && !comingFromApp) {
   window.location.replace('app.html');
 }
 // Marquer comme visité quand on clique sur l'app
 document.addEventListener('click', function(e) {
-  if (e.target.closest('a[href="app.html"]')) {
+  if (e.target.closest('[href="app.html"]') || e.target.closest('.btn-primary')) {
     localStorage.setItem('nearshop_visited', '1');
   }
 });
